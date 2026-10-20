@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5efe8" />
+    <title>Soniya's Hide & Seek</title>
+    <meta name="description" content="A private hide-and-seek game dashboard for friends in central London." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script type="module" crossorigin src="/assets/index-DnAzjZKH.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-D69QEo08.css">
+</head>
+
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">London game board • 4 teams</p>
+                <h1>Soniya's Hide & Seek</h1>
+                <div class="join-controls">
+                    <input id="player-name" type="text" placeholder="Your name" maxlength="18" aria-label="Player name" />
+                    <input id="room-code" type="text" placeholder="Room code" maxlength="12" aria-label="Room code" />
+                    <select id="team-select" aria-label="Team selection">
+                        <option value="Red">Red</option>
+                        <option value="Blue">Blue</option>
+                        <option value="Green">Green</option>
+                        <option value="Yellow">Yellow</option>
+                    </select>
+                    <label class="captain-toggle">
+                        <input id="captain-toggle" type="checkbox" />
+                        Captain
+                    </label>
+                    <button id="join-room" class="secondary-button">Join room</button>
+                </div>
+            </div>
+            <button id="start-game" class="primary-button">Start game</button>
+        </header>
+
+        <section id="seeker-gate" class="panel seeker-gate">
+            <div class="panel-head">
+                <h2>Seeker dashboard</h2>
+                <span class="badge">Private</span>
+            </div>
+            <div class="password-row">
+                <input id="seeker-password" type="password" placeholder="Enter seeker password" aria-label="Seeker password" />
+                <button id="unlock-seeker" class="secondary-button">Unlock</button>
+            </div>
+        </section>
+
+        <section id="seeker-view" class="panel seeker-view hidden" aria-live="polite">
+            <div class="panel-head">
+                <h2>Seeker side</h2>
+                <span class="badge badge-live">Live map</span>
+            </div>
+            <div id="seeker-player-list" class="players-list"></div>
+        </section>
+
+        <section class="stats-grid" aria-label="Game stats">
+            <article class="stat-card">
+                <span class="label">Round</span>
+                <strong>90 min</strong>
+            </article>
+            <article class="stat-card">
+                <span class="label">Zone</span>
+                <strong id="zone-stat">800 m</strong>
+            </article>
+            <article class="stat-card">
+                <span class="label">Teams</span>
+                <strong>4</strong>
+            </article>
+        </section>
+
+        <main class="main-grid">
+            <section class="panel status-panel">
+                <div class="panel-head">
+                    <h2>Game status</h2>
+                    <span id="mode-badge" class="badge badge-live">Live</span>
+                </div>
+
+                <div class="countdown-wrap">
+                    <div>
+                        <div class="tiny-label">Round timer</div>
+                        <div id="countdown" class="countdown">01:30:00</div>
+                    </div>
+
+                    <div class="two-col">
+                        <div>
+                            <div class="tiny-label">Hiders left</div>
+                            <div id="hiders-left" class="metric">12</div>
+                        </div>
+                        <div>
+                            <div class="tiny-label">Seekers</div>
+                            <div id="seekers-count" class="metric">3</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button id="trigger-ping" class="secondary-button">Trigger ping</button>
+                    <button id="drop-photo" class="secondary-button accent">Drop photo clue</button>
+                    <button id="mark-found" class="secondary-button">Mark found</button>
+                    <button id="panic-button" class="danger-button">Panic</button>
+                </div>
+
+                <div class="status-strip">
+                    <div>
+                        <span class="tiny-label">Ping phase</span>
+                        <strong id="phase-name">Scatter</strong>
+                    </div>
+                    <div>
+                        <span class="tiny-label">Curr. radius</span>
+                        <strong id="radius-value">800 m</strong>
+                    </div>
+                    <div>
+                        <span class="tiny-label">Last buzz</span>
+                        <strong id="last-buzz">—</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel board-panel">
+                <div class="panel-head">
+                    <h2>Board A · Soho & Covent Garden</h2>
+                    <span class="badge">Boundary</span>
+                </div>
+
+                <div class="board-wrap">
+                    <div id="board-map" aria-label="Game board map"></div>
+                </div>
+
+                <div class="legend">
+                    <span><i class="dot green"></i> Hider</span>
+                    <span><i class="dot red"></i> Seeker</span>
+                    <span><i class="dot amber"></i> Ping</span>
+                </div>
+            </section>
+
+            <section class="panel players-panel">
+                <div class="panel-head">
+                    <h2>Teams</h2>
+                    <span class="badge">4 teams</span>
+                </div>
+                <div id="team-list" class="players-list" aria-live="polite"></div>
+            </section>
+
+            <section class="panel logs-panel wide">
+                <div class="panel-head">
+                    <h2>Kill feed</h2>
+                    <span class="badge">Live</span>
+                </div>
+                <ul id="kill-feed" class="feed-list"></ul>
+            </section>
+
+            <section class="panel wide">
+                <div class="panel-head">
+                    <h2>Ping schedule</h2>
+                    <span class="badge">Board A</span>
+                </div>
+                <div id="ping-schedule" class="timeline"></div>
+            </section>
+
+            <section class="panel wide">
+                <div class="panel-head">
+                    <h2>Questions</h2>
+                </div>
+                <div class="question-grid">
+                    <div class="question-card"><strong>Compass</strong><span>1 token</span><small>Bearing to nearest 8 points</small></div>
+                    <div class="question-card"><strong>Radar</strong><span>2 tokens</span><small>Are you within 500 m?</small></div>
+                    <div class="question-card"><strong>Tube</strong><span>3 tokens</span><small>Nearest station</small></div>
+                    <div class="question-card"><strong>Photo drop</strong><span>3 tokens</span><small>Direction + proof</small></div>
+                </div>
+            </section>
+
+            <section class="panel rules-panel wide">
+                <div class="panel-head">
+                    <h2>Field rules</h2>
+                </div>
+                <ul class="rules-list">
+                    <li>Each squad has 3 players and 1 captain.</li>
+                    <li>The captain can drop a photo clue every 15 minutes to help the team.</li>
+                    <li>The safe zone shrinks as the timer moves on.</li>
+                    <li>Only confirmed sightings count as a valid catch.</li>
+                    <li>Use the panic call only for a genuine emergency or regroup point.</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+</body>
+
+</html>
