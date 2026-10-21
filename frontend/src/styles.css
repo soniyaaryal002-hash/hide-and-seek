@@ -564,18 +564,36 @@ h1 {
 
 @media (max-width: 620px) {
     body {
-        padding: 18px 12px 30px;
+        padding: 18px 12px 28px;
     }
-    .topbar,
+    .topbar {
+        display: block;
+        margin-bottom: 12px;
+    }
+    .join-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
+    .join-controls input,
+    .join-controls select,
+    .captain-toggle,
+    .password-row input {
+        width: 100%;
+        min-width: 0;
+    }
     .panel-head {
         display: block;
     }
-    .topbar {
-        margin-bottom: 12px;
-    }
-    .primary-button {
-        margin-top: 12px;
+    .primary-button,
+    .secondary-button,
+    .danger-button {
         width: 100%;
+        margin-top: 8px;
+    }
+    .controls {
+        display: grid;
+        grid-template-columns: 1fr;
     }
     .main-grid,
     .stats-grid,
@@ -586,5 +604,8 @@ h1 {
     .status-strip,
     .two-col {
         grid-template-columns: 1fr;
+    }
+    #board-map {
+        height: 260px;
     }
 }

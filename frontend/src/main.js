@@ -282,21 +282,21 @@ function renderSchedule() {
 }
 
 function renderFeed() {
-    const feedEntries = [
-        ...state.photoClues.map((clue) => ({
-            type: 'photo',
-            text: `${clue.team} captain ${clue.captain} dropped a photo clue.`,
-            image: clue.image,
-            caption: clue.caption
-        })),
-        ...state.photoClues.map((clue) => ({
-            type: 'note',
-            text: `${clue.team} • ${clue.caption}`
-        }))
-    ];
+    const feedEntries = state.photoClues
+        .map((clue) => {
+            const hasImage = Boolean(clue && clue.image);
+            return {
+                type: hasImage ? 'photo' : 'note',
+                text: hasImage ?
+                    `${clue.team} captain ${clue.captain} dropped a photo clue.` : `${clue.team} • ${clue.caption || 'Game update'}`,
+                image: hasImage ? clue.image : null,
+                caption: clue?.caption || ''
+            };
+        })
+        .slice(0, 7);
 
     killFeedEl.innerHTML = '';
-    feedEntries.slice(0, 7).forEach((entry) => {
+    feedEntries.forEach((entry) => {
         const li = document.createElement('li');
 
         if (entry.type === 'photo') {
@@ -507,8 +507,12 @@ function syncRoomState(snapshot = {}) {
     state.players = nextPlayers;
     state.roomCode = snapshot.roomCode || state.roomCode;
 
+    if (typeof snapshot.started === 'boolean') {
+        state.started = snapshot.started;
+    }
+
     if (snapshot.gameState) {
-        state.started = Boolean(snapshot.gameState.started || state.started);
+        state.started = Boolean(snapshot.gameState.started ?? snapshot.started ?? state.started);
         if (snapshot.gameState.seekerTeam) state.seekerTeam = snapshot.gameState.seekerTeam;
 
         if (typeof snapshot.gameState.timerSeconds === 'number' && snapshot.gameState.timerSeconds >= 0) {
@@ -550,7 +554,8 @@ function connectSocket() {
     socket.on('connect', () => {
         if (state.pendingJoin) {
             const name = playerNameInput.value.trim() || `Player ${Math.floor(Math.random() * 900 + 100)}`;
-            const roomCode = roomCodeInput.value.trim().toUpperCase() || 'SONIYA';
+            const roomCode = (roomCodeInput.value || 'SONIYA').trim().toUpperCase() || 'SONIYA';
+            roomCodeInput.value = roomCode;
             const selectedTeam = teamSelect.value || 'Red';
             state.roomCode = roomCode;
             state.myName = name;
@@ -586,8 +591,10 @@ function connectSocket() {
 
 function joinRoom() {
     const name = playerNameInput.value.trim() || `Player ${Math.floor(Math.random() * 900 + 100)}`;
+    const roomCode = (roomCodeInput.value || 'SONIYA').trim().toUpperCase() || 'SONIYA';
+    roomCodeInput.value = roomCode;
     state.myName = name;
-    state.roomCode = roomCodeInput.value.trim().toUpperCase() || 'SONIYA';
+    state.roomCode = roomCode;
 
     if (!state.socket) {
         state.pendingJoin = true;

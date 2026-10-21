@@ -60,6 +60,7 @@ function createRoom(roomCode) {
         started: false,
         clues: [],
         gameState: {
+            started: false,
             timerSeconds: 90 * 60,
             phase: 'Scatter',
             seekerTeam: 'Red',
@@ -110,7 +111,7 @@ function broadcastRoom(roomCode) {
 
 io.on('connection', (socket) => {
     socket.on('join-room', ({ roomCode, name, team, captain }) => {
-        const code = String(roomCode || 'SONIYA').trim().toUpperCase();
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase() || 'SONIYA';
         const playerName = String(name || 'Player').trim() || 'Player';
         const room = getRoom(code);
 
@@ -213,6 +214,7 @@ io.on('connection', (socket) => {
         const room = getRoom(code);
 
         room.started = true;
+        room.gameState.started = true;
         room.gameState.phase = 'Scatter';
         room.gameState.timerSeconds = 90 * 60;
         room.gameState.seekerTeam = seekerTeam || 'Red';
