@@ -114,9 +114,9 @@ io.on('connection', (socket) => {
         const playerName = String(name || 'Player').trim() || 'Player';
         const room = getRoom(code);
 
-        const existingPlayer = [...room.players.values()].find((player) => player.name === playerName);
+        const existingPlayer = room.players.get(socket.id);
         if (existingPlayer) {
-            room.players.delete(existingPlayer.id);
+            room.players.delete(socket.id);
         }
 
         if (room.players.size >= MAX_PLAYERS_PER_ROOM && !existingPlayer) {

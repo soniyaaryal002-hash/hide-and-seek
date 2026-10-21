@@ -22,6 +22,7 @@ const state = {
     socket: null,
     roomCode: '',
     myName: '',
+    pendingJoin: false,
     timerId: null,
     boundaryRadius: 800,
     teams: [],
@@ -547,18 +548,21 @@ function connectSocket() {
     state.socket = socket;
 
     socket.on('connect', () => {
-        const name = playerNameInput.value.trim() || 'Player One';
-        const roomCode = roomCodeInput.value.trim().toUpperCase() || 'SONIYA';
-        const selectedTeam = teamSelect.value || 'Red';
-        state.roomCode = roomCode;
-        state.myName = name;
-        socket.emit('join-room', {
-            roomCode,
-            name,
-            team: selectedTeam,
-            captain: captainToggle.checked
-        });
-        watchLocation();
+        if (state.pendingJoin) {
+            const name = playerNameInput.value.trim() || `Player ${Math.floor(Math.random() * 900 + 100)}`;
+            const roomCode = roomCodeInput.value.trim().toUpperCase() || 'SONIYA';
+            const selectedTeam = teamSelect.value || 'Red';
+            state.roomCode = roomCode;
+            state.myName = name;
+            socket.emit('join-room', {
+                roomCode,
+                name,
+                team: selectedTeam,
+                captain: captainToggle.checked
+            });
+            state.pendingJoin = false;
+            watchLocation();
+        }
     });
 
     socket.on('room:update', ({ players, roomCode, gameState, clues }) => {
@@ -581,13 +585,15 @@ function connectSocket() {
 }
 
 function joinRoom() {
+    const name = playerNameInput.value.trim() || `Player ${Math.floor(Math.random() * 900 + 100)}`;
+    state.myName = name;
+    state.roomCode = roomCodeInput.value.trim().toUpperCase() || 'SONIYA';
+
     if (!state.socket) {
+        state.pendingJoin = true;
         connectSocket();
         return;
     }
-
-    state.myName = playerNameInput.value.trim() || 'Player One';
-    state.roomCode = roomCodeInput.value.trim().toUpperCase() || 'SONIYA';
 
     const optimisticPlayer = {
         id: state.socket.id || `local-${Date.now()}`,
@@ -598,8 +604,7 @@ function joinRoom() {
         location: null
     };
 
-    const existingPlayers = (state.players || []).filter((player) => player.name !== state.myName);
-    state.players = [...existingPlayers, optimisticPlayer];
+    state.players = [...(state.players || []).filter((player) => player.id !== state.socket.id), optimisticPlayer];
 
     renderPlayers();
     renderMapMarkers();
