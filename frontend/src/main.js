@@ -1343,10 +1343,8 @@ function connectSocket() {
     const socket = io(backendUrl, { transports: ['websocket', 'polling'] });
     state.socket = socket;
     stopTimer();
-    state.started = false;
-    state.totalSeconds = DEFAULT_ROUND_SECONDS;
     state.lastPhotoReminderSeconds = null;
-    countdownEl.textContent = formatTime(state.totalSeconds);
+    countdownEl.textContent = formatTime(state.totalSeconds || DEFAULT_ROUND_SECONDS);
 
     socket.on('connect', function handleConnect() {
         if (state.pendingJoin) {
@@ -1358,10 +1356,6 @@ function connectSocket() {
             }
             state.roomCode = roomCode;
             state.myName = name;
-            state.started = false;
-            state.totalSeconds = DEFAULT_ROUND_SECONDS;
-            state.lastPhotoReminderSeconds = null;
-            countdownEl.textContent = formatTime(state.totalSeconds);
             saveSession();
             socket.emit('join-room', {
                 roomCode,
