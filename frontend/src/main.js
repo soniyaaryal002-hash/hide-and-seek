@@ -30,7 +30,17 @@ const PHOTO_CLUE_REMINDER_SECONDS = [
     45 * 60 - 50 * 60
 ];
 
-const LOCATION_REVEAL_SECONDS = [...PHOTO_CLUE_REMINDER_SECONDS];
+const LOCATION_REVEAL_SECONDS = [
+    45 * 60 - 5 * 60,
+    45 * 60 - 10 * 60,
+    45 * 60 - 15 * 60,
+    45 * 60 - 20 * 60,
+    45 * 60 - 25 * 60,
+    45 * 60 - 30 * 60,
+    45 * 60 - 35 * 60,
+    45 * 60 - 40 * 60,
+    45 * 60 - 45 * 60
+];
 const LOCATION_REVEAL_MS = 45 * 1000;
 
 const state = {
