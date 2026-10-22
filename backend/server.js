@@ -231,6 +231,21 @@ io.on('connection', (socket) => {
         broadcastRoom(code);
     });
 
+    socket.on('seeker-team:update', ({ roomCode, seekerTeam }) => {
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
+        const room = getRoom(code);
+        if (!room) return;
+
+        const nextSeekerTeam = normalizeTeam(seekerTeam || room.gameState.seekerTeam || 'Red');
+        room.gameState.seekerTeam = nextSeekerTeam;
+
+        if (room.started) {
+            reconcileRoomRoles(room);
+        }
+
+        broadcastRoom(code);
+    });
+
     socket.on('location:update', ({ lat, lng, accuracy }) => {
         const roomCode = socket.data.roomCode;
         if (!roomCode) return;
@@ -265,13 +280,14 @@ io.on('connection', (socket) => {
             room.timerInterval = null;
         }
 
+        const nextSeekerTeam = normalizeTeam(seekerTeam || room.gameState.seekerTeam || 'Red');
         room.started = true;
         room.gameState.started = true;
         room.gameState.phase = room.gameState.phase === 'Finished' ? 'Scatter' : (room.gameState.phase || 'Scatter');
         room.gameState.timerSeconds = Number.isFinite(room.gameState.timerSeconds) && room.gameState.timerSeconds > 0 ?
             room.gameState.timerSeconds :
             45 * 60;
-        room.gameState.seekerTeam = seekerTeam || room.gameState.seekerTeam || 'Red';
+        room.gameState.seekerTeam = nextSeekerTeam;
         room.clues = [];
         room.zone = resetZoneState(room.zone);
 
@@ -421,7 +437,7 @@ io.on('connection', (socket) => {
         };
 
         room.clues.unshift(clueEntry);
-        room.clues = room.clues.slice(0, 10);
+        room.clues = room.clues.slice(0, 20);
 
         io.to(code).emit('photo:drop', clueEntry);
         broadcastRoom(code);

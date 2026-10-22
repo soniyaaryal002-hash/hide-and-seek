@@ -43,6 +43,7 @@ const LOCATION_REVEAL_SECONDS = [
     45 * 60 - 45 * 60
 ];
 const LOCATION_REVEAL_MS = 30 * 1000;
+const MAX_FEED_ITEMS = 12;
 
 const state = {
     started: false,
@@ -279,7 +280,8 @@ function getPlayerGroups() {
 function initMap() {
     if (map) return;
 
-    const initialCenter = state.zone && state.zone.center ? [state.zone.center.lat, state.zone.center.lng] : mapCenter;
+    const initialCenter = state.currentLocation ? [state.currentLocation.lat, state.currentLocation.lng] :
+        (state.zone && state.zone.center ? [state.zone.center.lat, state.zone.center.lng] : mapCenter);
 
     map = L.map('board-map', {
         zoomControl: false,
@@ -531,11 +533,19 @@ function renderMapMarkers() {
     }
 }
 
+function getSelectableHiddenPlayers() {
+    return (state.players || []).filter((player) => {
+        if (!player || !player.name) return false;
+        const role = player.role || 'Hider';
+        return role !== 'Seeker';
+    });
+}
+
 function syncFoundPlayerSelect() {
     if (!foundPlayerSelect) return;
 
     const previousValue = foundPlayerSelect.value;
-    const hiddenPlayers = (state.players || []).filter((player) => player.role !== 'Seeker');
+    const hiddenPlayers = getSelectableHiddenPlayers();
 
     foundPlayerSelect.innerHTML = '<option value="">Select found hider</option>';
 
@@ -677,7 +687,7 @@ function renderFeed() {
                 caption: caption
             };
         })
-        .slice(0, 7);
+        .slice(0, MAX_FEED_ITEMS);
 
     killFeedEl.innerHTML = '';
     feedEntries.forEach((entry) => {
@@ -686,7 +696,7 @@ function renderFeed() {
         if (entry.type === 'photo') {
             li.innerHTML = `
                 <div>${entry.text}</div>
-                <img src="${entry.image}" alt="Photo clue" style="width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; margin-top: 8px;" />
+                <img src="${entry.image}" alt="Photo clue" style="display:block; width:100%; max-height:240px; object-fit:contain; background:#f3f6fb; border-radius:10px; margin-top:8px;" />
                 <small style="display:block; margin-top: 6px; color: #5a6479;">${entry.caption}</small>
             `;
         } else {
@@ -882,7 +892,7 @@ function dropPhotoClue() {
             createdAt: Date.now()
         };
 
-        state.photoClues = [clue, ...state.photoClues].slice(0, 5);
+        state.photoClues = [clue, ...state.photoClues].slice(0, MAX_FEED_ITEMS);
         renderFeed();
 
         if (state.socket) {
@@ -900,7 +910,7 @@ function dropPhotoClue() {
 
 function markFoundPlayer() {
     const selectedPlayerId = foundPlayerSelect ? foundPlayerSelect.value : '';
-    const available = (state.players || []).filter((player) => player.role !== 'Seeker');
+    const available = getSelectableHiddenPlayers();
 
     if (!available.length) {
         state.photoClues.unshift({
@@ -994,6 +1004,10 @@ function watchLocation() {
 
         state.currentLocation = payload;
 
+        if (map && !state.mapMovedByUser) {
+            map.setView([payload.lat, payload.lng], Math.max(map.getZoom(), 15));
+        }
+
         if (state.socket && state.roomCode) {
             state.socket.emit('location:update', payload);
         }
@@ -1054,7 +1068,7 @@ function syncRoomState(snapshot = {}) {
     }
 
     if (Array.isArray(snapshot.clues)) {
-        state.photoClues = snapshot.clues.slice(0, 5);
+        state.photoClues = snapshot.clues.slice(0, MAX_FEED_ITEMS);
     }
 
     if (!snapshot.zone && !state.zone.center) {
@@ -1062,6 +1076,7 @@ function syncRoomState(snapshot = {}) {
     }
 
     updateBoundary();
+    syncFoundPlayerSelect();
     renderPlayers();
     renderMapMarkers();
     renderFeed();
@@ -1120,6 +1135,10 @@ function setAdminZoneFromGPS() {
         };
         state.mapMovedByUser = false;
 
+        if (map) {
+            map.setView([center.lat, center.lng], Math.max(map.getZoom(), 15));
+        }
+
         if (state.socket && state.roomCode) {
             state.socket.emit('zone:update', {
                 roomCode: state.roomCode,
@@ -1162,6 +1181,10 @@ function setAdminZoneFromGPS() {
             roundSeconds: DEFAULT_ROUND_SECONDS
         };
         state.mapMovedByUser = false;
+
+        if (map) {
+            map.setView([nextCenter.lat, nextCenter.lng], Math.max(map.getZoom(), 15));
+        }
 
         if (state.socket && state.roomCode) {
             state.socket.emit('zone:update', {
@@ -1284,7 +1307,7 @@ function connectSocket() {
     socket.on('photo:drop', function handlePhotoDrop(clue) {
         if (!clue) return;
 
-        const nextClues = [clue, ...state.photoClues.filter((entry) => entry && entry.id !== clue.id)].slice(0, 5);
+        const nextClues = [clue, ...state.photoClues.filter((entry) => entry && entry.id !== clue.id)].slice(0, MAX_FEED_ITEMS);
         state.photoClues = nextClues;
         renderFeed();
     });
@@ -1335,6 +1358,12 @@ startGameButton.addEventListener('click', function onStartGame() {
     }
 
     state.socket.emit('start-game', { roomCode: state.roomCode, seekerTeam: state.seekerTeam });
+    if (state.socket && state.roomCode) {
+        state.socket.emit('seeker-team:update', {
+            roomCode: state.roomCode,
+            seekerTeam: state.seekerTeam
+        });
+    }
 
     state.started = true;
     state.lastPhotoReminderSeconds = null;
@@ -1369,7 +1398,15 @@ if (seekerTeamSelect) {
             unlockAdminZone();
             return;
         }
+
         state.seekerTeam = seekerTeamSelect.value || 'Red';
+
+        if (state.socket && state.roomCode) {
+            state.socket.emit('seeker-team:update', {
+                roomCode: state.roomCode,
+                seekerTeam: state.seekerTeam
+            });
+        }
     });
 }
 
