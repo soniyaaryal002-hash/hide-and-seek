@@ -8,7 +8,8 @@ import {
     getZoneRadiusForSeconds,
     isAdminPasswordValid,
     normalizeZoneCenter,
-    resetZoneState
+    resetZoneState,
+    shouldCompressDataUrl
 } from './zoneLogic.js';
 
 const pingSchedule = [
@@ -671,6 +672,42 @@ function fileToDataUrl(file) {
     });
 }
 
+async function compressPhotoForRoom(dataUrl, maxBytes = 1_000_000) {
+    if (!shouldCompressDataUrl(dataUrl, maxBytes)) {
+        return dataUrl;
+    }
+
+    const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = dataUrl;
+    });
+
+    const maxWidth = 1200;
+    const widthScale = Math.min(1, maxWidth / Math.max(image.width, 1));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.width * widthScale));
+    canvas.height = Math.max(1, Math.round(image.height * widthScale));
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+        return dataUrl;
+    }
+
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.72;
+    let nextDataUrl = canvas.toDataURL('image/jpeg', quality);
+
+    while (shouldCompressDataUrl(nextDataUrl, maxBytes) && quality > 0.35) {
+        quality -= 0.1;
+        nextDataUrl = canvas.toDataURL('image/jpeg', quality);
+    }
+
+    return nextDataUrl;
+}
+
 function dropPhotoClue() {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -682,11 +719,12 @@ function dropPhotoClue() {
         if (!file) return;
 
         const dataUrl = await fileToDataUrl(file);
+        const compressedDataUrl = await compressPhotoForRoom(dataUrl, 1_000_000);
         const clue = {
             id: `photo-${Date.now()}`,
             team: state.seekerTeam || 'Red',
             caption: 'Photo clue dropped for the team',
-            image: dataUrl,
+            image: compressedDataUrl,
             createdAt: Date.now()
         };
 

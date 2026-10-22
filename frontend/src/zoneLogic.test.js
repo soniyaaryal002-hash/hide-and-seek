@@ -7,7 +7,9 @@ import {
     getZoneRadiusForSeconds,
     getZoneCenter,
     isAdminPasswordValid,
-    resetZoneState
+    resetZoneState,
+    shouldCompressDataUrl,
+    getDataUrlByteLength
 } from './zoneLogic.js';
 
 test('zone starts at 600m and shrinks every 9 minutes', () => {
@@ -34,4 +36,11 @@ test('admin password gate only opens with the correct code', () => {
     assert.equal(isAdminPasswordValid('SONIYA'), true);
     assert.equal(isAdminPasswordValid('wrong-password'), false);
     assert.equal(isAdminPasswordValid(''), false);
+});
+
+test('large photo data URLs are flagged for compression before room sync', () => {
+    const bigDataUrl = 'data:image/jpeg;base64,' + 'A'.repeat(2 _000_000);
+    assert.equal(getDataUrlByteLength(bigDataUrl) > 1 _000_000, true);
+    assert.equal(shouldCompressDataUrl(bigDataUrl, 1 _000_000), true);
+    assert.equal(shouldCompressDataUrl('data:image/jpeg;base64,AAAA', 1 _000_000), false);
 });

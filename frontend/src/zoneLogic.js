@@ -35,7 +35,7 @@ export function getZoneRadiusForSeconds(totalSeconds, roundSeconds = DEFAULT_ROU
 
     const elapsedSeconds = Math.max(0, safeRoundSeconds - safeSeconds);
     const completedSteps = Math.floor(Math.min(elapsedSeconds, safeRoundSeconds) / shrinkEverySeconds);
-    const radius = stages[Math.min(stages.length - 1, completedSteps)] ?? minimumRadius;
+    const radius = stages[Math.min(stages.length - 1, completedSteps)] ? ? minimumRadius;
 
     return Math.max(minimumRadius, Math.min(DEFAULT_ZONE_RADIUS, radius));
 }
@@ -53,4 +53,21 @@ export function getZoneCenter(zone) {
         return normalizeZoneCenter(zone.center);
     }
     return null;
+}
+
+export function getDataUrlByteLength(dataUrl) {
+    if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) {
+        return 0;
+    }
+
+    const base64 = dataUrl.split(',')[1] || '';
+    if (!base64) {
+        return 0;
+    }
+
+    return Math.ceil((base64.length * 3) / 4);
+}
+
+export function shouldCompressDataUrl(dataUrl, maxBytes = 1 _000_000) {
+    return getDataUrlByteLength(dataUrl) > maxBytes;
 }

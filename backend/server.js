@@ -10,7 +10,8 @@ const io = new Server(server, {
     cors: {
         origin: '*',
         methods: ['GET', 'POST']
-    }
+    },
+    maxHttpBufferSize: 20 * 1024 * 1024
 });
 
 const rooms = new Map();
