@@ -591,9 +591,18 @@ function renderMapMarkers() {
     }
 
     const revealMode = isLocationRevealActive();
+    const currentPlayer = state.players.find((player) => state.socket && state.socket.id && player.id === state.socket.id);
+    const myTeam = currentPlayer && currentPlayer.team ? normalizeTeamName(currentPlayer.team) : null;
+    const visiblePlayers = revealMode ?
+        state.players.filter((player) => player.location) :
+        state.players.filter((player) => {
+            if (!player || !player.location) return false;
+            if (!currentPlayer) return false;
+            if (player.id === currentPlayer.id) return true;
+            return normalizeTeamName(player.team) === myTeam;
+        });
 
-    const playersWithLocations = state.players.filter((player) => player.location);
-    playersWithLocations.forEach((player) => {
+    visiblePlayers.forEach((player) => {
         const isCurrentUser = Boolean(state.socket && state.socket.id && player.id === state.socket.id);
         const marker = L.circleMarker([player.location.lat, player.location.lng], {
             radius: revealMode ? (isCurrentUser ? 10 : 9) : (isCurrentUser ? 8 : player.role === 'Seeker' ? 9 : 7),
@@ -612,7 +621,6 @@ function renderMapMarkers() {
         state.mapMarkers.set(player.id, marker);
     });
 
-    const currentPlayer = state.players.find((player) => state.socket && state.socket.id && player.id === state.socket.id);
     const isCurrentUserVisible = currentPlayer && currentPlayer.location;
 
     if (state.currentLocation && !isCurrentUserVisible) {
