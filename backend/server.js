@@ -16,6 +16,35 @@ const io = new Server(server, {
 const rooms = new Map();
 const teamOrder = ['Red', 'Blue', 'Green', 'Yellow'];
 const MAX_PLAYERS_PER_ROOM = 20;
+const DEFAULT_ZONE = {
+    center: null,
+    radius: 600,
+    roundSeconds: 45 * 60
+};
+
+function normalizeZoneCenter(center) {
+    if (!center || center.lat === undefined || center.lng === undefined) {
+        return null;
+    }
+
+    const lat = Number(center.lat);
+    const lng = Number(center.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return null;
+    }
+
+    return { lat, lng };
+}
+
+function resetZoneState(zone) {
+    const nextCenter = zone && zone.center ? normalizeZoneCenter(zone.center) : null;
+    return {
+        center: nextCenter,
+        radius: 600,
+        roundSeconds: DEFAULT_ZONE.roundSeconds
+    };
+}
 
 function normalizeTeam(teamName) {
     const value = String(teamName || '').trim();
@@ -38,19 +67,15 @@ function ensureRoomTimer(room) {
         }
 
         room.started = false;
+        room.gameState.started = false;
         room.gameState.phase = 'Finished';
+        room.clues = [];
+        room.zone = resetZoneState(room.zone);
+        room.gameState.timerSeconds = 45 * 60;
         broadcastRoom(room.roomCode);
         clearInterval(room.timerInterval);
         room.timerInterval = null;
     }, 1000);
-}
-
-function setCaptainForTeam(room, teamName, captainPlayerId) {
-    [...room.players.values()].forEach((player) => {
-        if (player.team === teamName) {
-            player.captain = player.id === captainPlayerId;
-        }
-    });
 }
 
 function createRoom(roomCode) {
@@ -59,9 +84,10 @@ function createRoom(roomCode) {
         players: new Map(),
         started: false,
         clues: [],
+        zone: resetZoneState(DEFAULT_ZONE),
         gameState: {
             started: false,
-            timerSeconds: 90 * 60,
+            timerSeconds: 45 * 60,
             phase: 'Scatter',
             seekerTeam: 'Red',
             allowedTeams: teamOrder
@@ -82,19 +108,34 @@ function serializePlayers(room) {
         name: player.name,
         team: player.team || 'Unassigned',
         role: player.role || 'Hider',
-        captain: Boolean(player.captain),
         location: player.location || null,
         connectedAt: player.connectedAt
     }));
 }
 
 function assignTeam(room) {
-    for (const teamName of teamOrder) {
-        const used = [...room.players.values()].some((player) => player.team === teamName);
-        if (!used) return teamName;
-    }
+    const teamCounts = teamOrder.map((teamName) => ({
+        team: teamName,
+        count: [...room.players.values()].filter((player) => player.team === teamName).length
+    }));
 
-    return teamOrder[0];
+    const leastFull = teamCounts.sort((a, b) => a.count - b.count)[0];
+    return leastFull ? leastFull.team : teamOrder[0];
+}
+
+function reconcileRoomRoles(room) {
+    if (!room || !room.players) return;
+
+    const seekerTeam = normalizeTeam(room.gameState && room.gameState.seekerTeam);
+
+    room.players.forEach((player) => {
+        if (!room.started) {
+            player.role = 'Hider';
+            return;
+        }
+
+        player.role = player.team === seekerTeam ? 'Seeker' : 'Hider';
+    });
 }
 
 function broadcastRoom(roomCode) {
@@ -105,15 +146,31 @@ function broadcastRoom(roomCode) {
         started: room.started,
         players: serializePlayers(room),
         gameState: room.gameState,
-        clues: room.clues
+        clues: room.clues,
+        zone: room.zone
     });
 }
 
 io.on('connection', (socket) => {
-    socket.on('join-room', ({ roomCode, name, team, captain }) => {
+    socket.on('join-room', ({ roomCode, name, team }) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase() || 'SONIYA';
         const playerName = String(name || 'Player').trim() || 'Player';
         const room = getRoom(code);
+        const isFreshRoom = room.players.size === 0 && !room.started && !room.zone.center && room.gameState.timerSeconds === 45 * 60;
+
+        if (!room.started && isFreshRoom) {
+            if (room.timerInterval) {
+                clearInterval(room.timerInterval);
+                room.timerInterval = null;
+            }
+
+            room.started = false;
+            room.gameState.started = false;
+            room.gameState.phase = 'Scatter';
+            room.gameState.timerSeconds = 45 * 60;
+            room.clues = [];
+            room.zone = resetZoneState({ center: null });
+        }
 
         const existingPlayer = room.players.get(socket.id);
         if (existingPlayer) {
@@ -134,24 +191,17 @@ io.on('connection', (socket) => {
         socket.data.name = playerName;
 
         const requestedTeam = normalizeTeam(team || assignTeam(room));
-        const teamPlayers = [...room.players.values()].filter((player) => normalizeTeam(player.team) === requestedTeam);
-        const captainRequested = Boolean(captain);
-        const isCaptain = captainRequested || teamPlayers.length === 0;
 
         room.players.set(socket.id, {
             id: socket.id,
             name: playerName,
             team: requestedTeam,
-            captain: isCaptain,
-            role: room.started ? (room.gameState.seekerTeam === requestedTeam ? 'Seeker' : 'Hider') : 'Hider',
+            role: 'Hider',
             location: null,
             connectedAt: Date.now()
         });
 
-        if (isCaptain) {
-            setCaptainForTeam(room, requestedTeam, socket.id);
-        }
-
+        reconcileRoomRoles(room);
         broadcastRoom(code);
     });
 
@@ -167,7 +217,7 @@ io.on('connection', (socket) => {
         broadcastRoom(roomCode);
     });
 
-    socket.on('player:assign', ({ roomCode, playerId, team, captain }) => {
+    socket.on('player:assign', ({ roomCode, playerId, team }) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
         const room = getRoom(code);
         const player = room.players.get(playerId || socket.id);
@@ -175,19 +225,8 @@ io.on('connection', (socket) => {
 
         const nextTeam = normalizeTeam(team || player.team || assignTeam(room));
         player.team = nextTeam;
-        player.role = room.started ? (room.gameState.seekerTeam === nextTeam ? 'Seeker' : 'Hider') : 'Hider';
 
-        if (captain === true) {
-            setCaptainForTeam(room, nextTeam, player.id);
-        } else if (captain === false) {
-            player.captain = false;
-        } else if (!player.captain) {
-            const hasCaptain = [...room.players.values()].some((entry) => entry.team === nextTeam && entry.captain && entry.id !== player.id);
-            if (!hasCaptain) {
-                player.captain = true;
-            }
-        }
-
+        reconcileRoomRoles(room);
         broadcastRoom(code);
     });
 
@@ -213,17 +252,57 @@ io.on('connection', (socket) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
         const room = getRoom(code);
 
+        if (!room.zone || !room.zone.center) {
+            socket.emit('room:error', {
+                message: 'Set the safe zone first using the current GPS center before starting the round.'
+            });
+            return;
+        }
+
+        if (room.timerInterval) {
+            clearInterval(room.timerInterval);
+            room.timerInterval = null;
+        }
+
         room.started = true;
         room.gameState.started = true;
-        room.gameState.phase = 'Scatter';
-        room.gameState.timerSeconds = 90 * 60;
-        room.gameState.seekerTeam = seekerTeam || 'Red';
+        room.gameState.phase = room.gameState.phase === 'Finished' ? 'Scatter' : (room.gameState.phase || 'Scatter');
+        room.gameState.timerSeconds = Number.isFinite(room.gameState.timerSeconds) && room.gameState.timerSeconds > 0 ?
+            room.gameState.timerSeconds :
+            45 * 60;
+        room.gameState.seekerTeam = seekerTeam || room.gameState.seekerTeam || 'Red';
+        room.clues = [];
+        room.zone = resetZoneState(room.zone);
 
-        [...room.players.values()].forEach((player) => {
-            player.role = room.gameState.seekerTeam === player.team ? 'Seeker' : 'Hider';
-        });
+        reconcileRoomRoles(room);
 
         ensureRoomTimer(room);
+        broadcastRoom(code);
+    });
+
+    socket.on('zone:update', ({ roomCode, center, radius, reset }) => {
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
+        const room = getRoom(code);
+
+        if (reset || !room.zone) {
+            let centerValue = room.zone && room.zone.center ? room.zone.center : null;
+            if (center) {
+                centerValue = center;
+            }
+            room.zone = resetZoneState({ center: centerValue });
+        }
+
+        if (center) {
+            room.zone.center = normalizeZoneCenter(center);
+        }
+
+        if (Number.isFinite(Number(radius)) && Number(radius) > 0) {
+            room.zone.radius = Number(radius);
+        } else {
+            room.zone.radius = 600;
+        }
+
+        room.gameState.phase = room.started ? room.gameState.phase || 'Scatter' : 'Scatter';
         broadcastRoom(code);
     });
 
@@ -242,6 +321,66 @@ io.on('connection', (socket) => {
         broadcastRoom(code);
     });
 
+    socket.on('pause-round', ({ roomCode }) => {
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
+        const room = getRoom(code);
+
+        if (room.timerInterval) {
+            clearInterval(room.timerInterval);
+            room.timerInterval = null;
+        }
+
+        room.started = false;
+        room.gameState.started = false;
+        room.gameState.phase = room.gameState.phase === 'Finished' ? 'Finished' : 'Paused';
+
+        io.to(code).emit('round:paused', {
+            roomCode: code,
+            timerSeconds: room.gameState.timerSeconds,
+            phase: room.gameState.phase
+        });
+        broadcastRoom(code);
+    });
+
+    socket.on('end-round', ({ roomCode }) => {
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
+        const room = getRoom(code);
+
+        if (room.timerInterval) {
+            clearInterval(room.timerInterval);
+            room.timerInterval = null;
+        }
+
+        room.started = false;
+        room.gameState.started = false;
+        room.gameState.phase = 'Finished';
+        room.gameState.timerSeconds = 45 * 60;
+        room.clues = [];
+        room.zone = resetZoneState({ center: null });
+
+        io.to(code).emit('round:ended');
+        broadcastRoom(code);
+    });
+
+    socket.on('reset-round', ({ roomCode }) => {
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
+        const room = getRoom(code);
+
+        if (room.timerInterval) {
+            clearInterval(room.timerInterval);
+            room.timerInterval = null;
+        }
+
+        room.started = false;
+        room.gameState.started = false;
+        room.gameState.phase = 'Scatter';
+        room.gameState.timerSeconds = 45 * 60;
+        room.clues = [];
+        room.zone = resetZoneState({ center: null });
+
+        broadcastRoom(code);
+    });
+
     socket.on('player:found', ({ roomCode, playerId }) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
         const room = getRoom(code);
@@ -251,25 +390,39 @@ io.on('connection', (socket) => {
 
         player.role = 'Seeker';
         room.gameState.seekerTeam = player.team || room.gameState.seekerTeam;
+
+        const foundMessage = {
+            id: `found-${Date.now()}`,
+            team: player.team || 'Game',
+            caption: `${player.name} has been found and moved to the seeker team.`,
+            image: null,
+            createdAt: Date.now()
+        };
+
+        room.clues.unshift(foundMessage);
+        io.to(code).emit('photo:drop', foundMessage);
         broadcastRoom(code);
     });
 
-    socket.on('photo:drop', ({ roomCode, team, captain, image, caption }) => {
+    socket.on('photo:drop', ({ roomCode, team, image, caption }) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
         const room = getRoom(code);
 
+        if (!room.started) return;
         if (!image) return;
 
-        room.clues.unshift({
+        const clueEntry = {
             id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
             team: team || 'Red',
             caption: caption || 'Photo clue dropped',
-            captain: captain || 'Captain',
             image,
             createdAt: Date.now()
-        });
+        };
 
-        io.to(code).emit('photo:drop', room.clues[0]);
+        room.clues.unshift(clueEntry);
+        room.clues = room.clues.slice(0, 10);
+
+        io.to(code).emit('photo:drop', clueEntry);
         broadcastRoom(code);
     });
 

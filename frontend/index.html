@@ -21,55 +21,63 @@
                 <h1>Soniya's Hide & Seek</h1>
                 <div class="join-controls">
                     <input id="player-name" type="text" placeholder="Your name" maxlength="18" aria-label="Player name" />
-                    <input id="room-code" type="text" value="SONIYA" placeholder="Shared room" maxlength="12" aria-label="Room code" />
+                    <input id="room-code" type="hidden" value="SONIYA" aria-label="Room code" />
+                    <div class="shared-room-pill">Shared room: SONIYA</div>
                     <select id="team-select" aria-label="Team selection">
                         <option value="Red">Red</option>
                         <option value="Blue">Blue</option>
                         <option value="Green">Green</option>
                         <option value="Yellow">Yellow</option>
                     </select>
-                    <label class="captain-toggle">
-                        <input id="captain-toggle" type="checkbox" />
-                        Captain
-                    </label>
                     <button id="join-room" class="secondary-button">Join room</button>
                 </div>
             </div>
             <button id="start-game" class="primary-button">Start game</button>
         </header>
 
-        <section id="seeker-gate" class="panel seeker-gate">
+        <section class="panel admin-panel">
             <div class="panel-head">
-                <h2>Seeker dashboard</h2>
-                <span class="badge">Private</span>
+                <h2>Admin zone control</h2>
+                <span class="badge badge-live">GPS</span>
             </div>
-            <div class="password-row">
-                <input id="seeker-password" type="password" placeholder="Enter seeker password" aria-label="Seeker password" />
-                <button id="unlock-seeker" class="secondary-button">Unlock</button>
-            </div>
-        </section>
 
-        <section id="seeker-view" class="panel seeker-view hidden" aria-live="polite">
-            <div class="panel-head">
-                <h2>Seeker side</h2>
-                <span class="badge badge-live">Live map</span>
+            <div class="admin-gate">
+                <label class="tiny-label" for="admin-password">Admin password</label>
+                <div class="password-row">
+                    <input id="admin-password" type="password" placeholder="Enter admin password" aria-label="Admin password" />
+                    <button id="unlock-admin" class="secondary-button">Unlock</button>
+                </div>
+                <div id="admin-lock-message" class="admin-lock-message" aria-live="polite">
+                    Enter the admin password to use GPS, reset the boundary, and choose the seeker team.
+                </div>
             </div>
-            <div id="seeker-player-list" class="players-list"></div>
-        </section>
 
-        <section class="stats-grid" aria-label="Game stats">
-            <article class="stat-card">
-                <span class="label">Round</span>
-                <strong>90 min</strong>
-            </article>
-            <article class="stat-card">
-                <span class="label">Zone</span>
-                <strong id="zone-stat">800 m</strong>
-            </article>
-            <article class="stat-card">
-                <span class="label">Teams</span>
-                <strong>4</strong>
-            </article>
+            <div id="admin-controls" class="admin-controls hidden">
+                <div class="seeker-team-panel">
+                    <label class="tiny-label" for="seeker-team-select">Seeker team</label>
+                    <select id="seeker-team-select" class="seeker-team-select" aria-label="Seeker team selection">
+                        <option value="Red">Red</option>
+                        <option value="Blue">Blue</option>
+                        <option value="Green">Green</option>
+                        <option value="Yellow">Yellow</option>
+                    </select>
+                </div>
+
+                <div class="admin-grid">
+                    <div class="field-row">
+                        <input id="zone-lat" type="number" step="0.000001" placeholder="Latitude" aria-label="Zone latitude" />
+                        <input id="zone-lng" type="number" step="0.000001" placeholder="Longitude" aria-label="Zone longitude" />
+                    </div>
+                    <div class="button-row">
+                        <button id="set-admin-zone" class="secondary-button">Use my GPS</button>
+                        <button id="reset-zone" class="secondary-button">Reset boundary</button>
+                    </div>
+                    <div class="zone-center-wrap">
+                        <span class="tiny-label">Zone center</span>
+                        <strong id="zone-center-label">Not set yet</strong>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <main class="main-grid">
@@ -79,10 +87,16 @@
                     <span id="mode-badge" class="badge badge-live">Live</span>
                 </div>
 
+                <div class="player-role-panel">
+                    <div class="tiny-label">Your place</div>
+                    <div id="your-role" class="role-badge waiting">Waiting</div>
+                    <div id="your-role-meta" class="role-meta">Join room to sync</div>
+                </div>
+
                 <div class="countdown-wrap">
                     <div>
                         <div class="tiny-label">Round timer</div>
-                        <div id="countdown" class="countdown">01:30:00</div>
+                        <div id="countdown" class="countdown">00:45:00</div>
                     </div>
 
                     <div class="two-col">
@@ -98,10 +112,19 @@
                 </div>
 
                 <div class="controls">
-                    <button id="trigger-ping" class="secondary-button">Trigger ping</button>
-                    <button id="drop-photo" class="secondary-button accent">Drop photo clue</button>
-                    <button id="mark-found" class="secondary-button">Mark found</button>
-                    <button id="panic-button" class="danger-button">Panic</button>
+                    <button id="trigger-ping" class="secondary-button">Game alert</button>
+                    <button id="drop-photo" class="secondary-button photo-alert">Drop photo clue</button>
+                    <button id="end-round" class="secondary-button">Stop round</button>
+                </div>
+
+                <div class="found-player-row">
+                    <div class="found-player-field">
+                        <label class="tiny-label" for="found-player-select">Found player</label>
+                        <select id="found-player-select" class="found-player-select" aria-label="Found player">
+                            <option value="">Select found hider</option>
+                        </select>
+                    </div>
+                    <button id="mark-found" class="secondary-button found-button">Mark found</button>
                 </div>
 
                 <div class="status-strip">
@@ -122,7 +145,7 @@
 
             <section class="panel board-panel">
                 <div class="panel-head">
-                    <h2>Board A · Soho & Covent Garden</h2>
+                    <h2>Map</h2>
                     <span class="badge">Boundary</span>
                 </div>
 
@@ -137,14 +160,6 @@
                 </div>
             </section>
 
-            <section class="panel players-panel">
-                <div class="panel-head">
-                    <h2>Teams</h2>
-                    <span class="badge">4 teams</span>
-                </div>
-                <div id="team-list" class="players-list" aria-live="polite"></div>
-            </section>
-
             <section class="panel logs-panel wide">
                 <div class="panel-head">
                     <h2>Kill feed</h2>
@@ -153,38 +168,14 @@
                 <ul id="kill-feed" class="feed-list"></ul>
             </section>
 
-            <section class="panel wide">
+            <section class="panel players-panel wide">
                 <div class="panel-head">
-                    <h2>Ping schedule</h2>
-                    <span class="badge">Board A</span>
+                    <h2>Teams</h2>
+                    <span class="badge">Live</span>
                 </div>
-                <div id="ping-schedule" class="timeline"></div>
+                <div id="team-list" class="players-list" aria-live="polite"></div>
             </section>
 
-            <section class="panel wide">
-                <div class="panel-head">
-                    <h2>Questions</h2>
-                </div>
-                <div class="question-grid">
-                    <div class="question-card"><strong>Compass</strong><span>1 token</span><small>Bearing to nearest 8 points</small></div>
-                    <div class="question-card"><strong>Radar</strong><span>2 tokens</span><small>Are you within 500 m?</small></div>
-                    <div class="question-card"><strong>Tube</strong><span>3 tokens</span><small>Nearest station</small></div>
-                    <div class="question-card"><strong>Photo drop</strong><span>3 tokens</span><small>Direction + proof</small></div>
-                </div>
-            </section>
-
-            <section class="panel rules-panel wide">
-                <div class="panel-head">
-                    <h2>Field rules</h2>
-                </div>
-                <ul class="rules-list">
-                    <li>Each squad has 3 players and 1 captain.</li>
-                    <li>The captain can drop a photo clue every 15 minutes to help the team.</li>
-                    <li>The safe zone shrinks as the timer moves on.</li>
-                    <li>Only confirmed sightings count as a valid catch.</li>
-                    <li>Use the panic call only for a genuine emergency or regroup point.</li>
-                </ul>
-            </section>
         </main>
     </div>
 

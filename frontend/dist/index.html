@@ -11,8 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <script type="module" crossorigin src="/assets/index-Cyo-bXAN.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CcVrfhxc.css">
+  <script type="module" crossorigin src="/assets/index-C_8t7zVa.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BYXUkhBR.css">
 </head>
 
 <body>
@@ -59,10 +59,31 @@
             <div id="seeker-player-list" class="players-list"></div>
         </section>
 
+        <section class="panel admin-panel">
+            <div class="panel-head">
+                <h2>Admin zone control</h2>
+                <span class="badge badge-live">GPS</span>
+            </div>
+            <div class="admin-grid">
+                <div class="field-row">
+                    <input id="zone-lat" type="number" step="0.000001" placeholder="Latitude" aria-label="Zone latitude" />
+                    <input id="zone-lng" type="number" step="0.000001" placeholder="Longitude" aria-label="Zone longitude" />
+                </div>
+                <div class="button-row">
+                    <button id="set-admin-zone" class="secondary-button">Use my GPS</button>
+                    <button id="reset-zone" class="secondary-button">Reset round</button>
+                </div>
+                <div class="zone-center-wrap">
+                    <span class="tiny-label">Zone center</span>
+                    <strong id="zone-center-label">Not set yet</strong>
+                </div>
+            </div>
+        </section>
+
         <section class="stats-grid" aria-label="Game stats">
             <article class="stat-card">
                 <span class="label">Round</span>
-                <strong>90 min</strong>
+                <strong>Live</strong>
             </article>
             <article class="stat-card">
                 <span class="label">Zone</span>
@@ -70,7 +91,7 @@
             </article>
             <article class="stat-card">
                 <span class="label">Teams</span>
-                <strong>4</strong>
+                <strong>—</strong>
             </article>
         </section>
 
@@ -84,7 +105,7 @@
                 <div class="countdown-wrap">
                     <div>
                         <div class="tiny-label">Round timer</div>
-                        <div id="countdown" class="countdown">01:30:00</div>
+                        <div id="countdown" class="countdown">00:45:00</div>
                     </div>
 
                     <div class="two-col">
@@ -100,10 +121,17 @@
                 </div>
 
                 <div class="controls">
-                    <button id="trigger-ping" class="secondary-button">Trigger ping</button>
+                    <button id="trigger-ping" class="secondary-button">Game alert</button>
                     <button id="drop-photo" class="secondary-button accent">Drop photo clue</button>
                     <button id="mark-found" class="secondary-button">Mark found</button>
-                    <button id="panic-button" class="danger-button">Panic</button>
+                    <button id="end-round" class="secondary-button">End round</button>
+                </div>
+
+                <div class="found-player-row">
+                    <label class="tiny-label" for="found-player-select">Found player</label>
+                    <select id="found-player-select" class="found-player-select" aria-label="Found player">
+                        <option value="">Select found hider</option>
+                    </select>
                 </div>
 
                 <div class="status-strip">
@@ -142,7 +170,7 @@
             <section class="panel players-panel">
                 <div class="panel-head">
                     <h2>Teams</h2>
-                    <span class="badge">4 teams</span>
+                    <span class="badge">Live</span>
                 </div>
                 <div id="team-list" class="players-list" aria-live="polite"></div>
             </section>
@@ -155,38 +183,6 @@
                 <ul id="kill-feed" class="feed-list"></ul>
             </section>
 
-            <section class="panel wide">
-                <div class="panel-head">
-                    <h2>Ping schedule</h2>
-                    <span class="badge">Board A</span>
-                </div>
-                <div id="ping-schedule" class="timeline"></div>
-            </section>
-
-            <section class="panel wide">
-                <div class="panel-head">
-                    <h2>Questions</h2>
-                </div>
-                <div class="question-grid">
-                    <div class="question-card"><strong>Compass</strong><span>1 token</span><small>Bearing to nearest 8 points</small></div>
-                    <div class="question-card"><strong>Radar</strong><span>2 tokens</span><small>Are you within 500 m?</small></div>
-                    <div class="question-card"><strong>Tube</strong><span>3 tokens</span><small>Nearest station</small></div>
-                    <div class="question-card"><strong>Photo drop</strong><span>3 tokens</span><small>Direction + proof</small></div>
-                </div>
-            </section>
-
-            <section class="panel rules-panel wide">
-                <div class="panel-head">
-                    <h2>Field rules</h2>
-                </div>
-                <ul class="rules-list">
-                    <li>Each squad has 3 players and 1 captain.</li>
-                    <li>The captain can drop a photo clue every 15 minutes to help the team.</li>
-                    <li>The safe zone shrinks as the timer moves on.</li>
-                    <li>Only confirmed sightings count as a valid catch.</li>
-                    <li>Use the panic call only for a genuine emergency or regroup point.</li>
-                </ul>
-            </section>
         </main>
     </div>
 
