@@ -348,10 +348,11 @@ function renderMapMarkers() {
 
     const playersWithLocations = state.players.filter((player) => player.location);
     playersWithLocations.forEach((player) => {
+        const isCurrentUser = Boolean(state.socket && state.socket.id && player.id === state.socket.id);
         const marker = L.circleMarker([player.location.lat, player.location.lng], {
-            radius: player.role === 'Seeker' ? 9 : 7,
-            color: getTeamColor(player.team || 'Red'),
-            fillColor: player.role === 'Seeker' ? '#ff5a5f' : '#9fe3a6',
+            radius: isCurrentUser ? 8 : player.role === 'Seeker' ? 9 : 7,
+            color: isCurrentUser ? '#2158d0' : getTeamColor(player.team || 'Red'),
+            fillColor: isCurrentUser ? '#6fa8ff' : (player.role === 'Seeker' ? '#ff5a5f' : '#9fe3a6'),
             fillOpacity: 1,
             weight: 2
         }).addTo(map);
@@ -365,7 +366,10 @@ function renderMapMarkers() {
         state.mapMarkers.set(player.id, marker);
     });
 
-    if (state.currentLocation && !state.players.some((player) => player.location && player.location.lat === state.currentLocation.lat && player.location.lng === state.currentLocation.lng)) {
+    const currentPlayer = state.players.find((player) => state.socket && state.socket.id && player.id === state.socket.id);
+    const isCurrentUserVisible = currentPlayer && currentPlayer.location;
+
+    if (state.currentLocation && !isCurrentUserVisible) {
         const selfMarker = L.circleMarker([state.currentLocation.lat, state.currentLocation.lng], {
             radius: 8,
             color: '#2158d0',
