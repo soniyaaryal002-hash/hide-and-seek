@@ -9,6 +9,7 @@ import {
     isAdminPasswordValid,
     normalizeZoneCenter,
     resetZoneState,
+    shouldAutoCenterMap,
     shouldCompressDataUrl
 } from './zoneLogic.js';
 
@@ -41,7 +42,7 @@ const LOCATION_REVEAL_SECONDS = [
     45 * 60 - 40 * 60,
     45 * 60 - 45 * 60
 ];
-const LOCATION_REVEAL_MS = 45 * 1000;
+const LOCATION_REVEAL_MS = 30 * 1000;
 
 const state = {
     started: false,
@@ -64,6 +65,7 @@ const state = {
     locationWatchId: null,
     currentLocation: null,
     mapMarkers: new Map(),
+    mapMovedByUser: false,
     adminLocationMarker: null,
     reminderPulseLayer: null,
     seekerUnlocked: false,
@@ -107,6 +109,7 @@ const endRoundButton = document.getElementById('end-round');
 
 const backendUrl =
     import.meta.env.VITE_BACKEND_URL || 'https://hide-and-seek-backend-bshf.onrender.com';
+const SESSION_STORAGE_KEY = 'hide-and-seek-player-session';
 const mapCenter = [DEFAULT_ZONE_CENTER.lat, DEFAULT_ZONE_CENTER.lng];
 let map;
 let boundaryLayer;
@@ -116,6 +119,72 @@ function formatTime(totalSeconds) {
     const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
+}
+
+function getSavedSession() {
+    try {
+        const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') {
+            return null;
+        }
+
+        const roomCode = String(parsed.roomCode || 'SONIYA').trim() || 'SONIYA';
+        const name = String(parsed.name || '').trim();
+        const team = String(parsed.team || (teamSelect && teamSelect.value) || 'Red').trim() || 'Red';
+
+        if (!name || !roomCode) {
+            return null;
+        }
+
+        return { roomCode, name, team };
+    } catch (error) {
+        return null;
+    }
+}
+
+function saveSession() {
+    const session = {
+        roomCode: (roomCodeInput && roomCodeInput.value.trim()) || state.roomCode || 'SONIYA',
+        name: (playerNameInput && playerNameInput.value.trim()) || state.myName || '',
+        team: (teamSelect && teamSelect.value) || 'Red'
+    };
+
+    if (!session.name || !session.roomCode) {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    } catch (error) {
+        // Ignore storage failures and continue without persistence.
+    }
+}
+
+function restoreSession() {
+    const session = getSavedSession();
+    if (!session) {
+        return false;
+    }
+
+    if (playerNameInput) {
+        playerNameInput.value = session.name;
+    }
+    if (roomCodeInput) {
+        roomCodeInput.value = session.roomCode;
+    }
+    if (teamSelect) {
+        teamSelect.value = session.team;
+    }
+
+    state.myName = session.name;
+    state.roomCode = session.roomCode;
+    state.pendingJoin = true;
+    return true;
 }
 
 function getBoundaryRadius() {
@@ -221,6 +290,10 @@ function initMap() {
         tap: false,
     }).setView(initialCenter, 15);
 
+    map.on('dragstart zoomstart', () => {
+        state.mapMovedByUser = true;
+    });
+
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors',
@@ -280,6 +353,7 @@ function updateZoneDisplay() {
         return;
     }
 
+    const previousCenter = state.zone && state.zone.center ? {...state.zone.center } : null;
     const center = getZoneCenter(state.zone);
     const nextRadius = getBoundaryRadius();
     state.zone.center = center;
@@ -322,8 +396,9 @@ function updateZoneDisplay() {
         });
     }
 
-    if (map) {
+    if (map && shouldAutoCenterMap(previousCenter, center, state.mapMovedByUser)) {
         map.setView([center.lat, center.lng], Math.max(map.getZoom(), 15));
+        state.mapMovedByUser = false;
     }
 
     const radiusText = `${Math.round(nextRadius)} m`;
@@ -363,13 +438,13 @@ function triggerLocationReveal() {
                 map.removeLayer(state.reminderPulseLayer);
                 state.reminderPulseLayer = null;
             }
-        }, 4500);
+        }, 3500);
     }
 
     state.photoClues.unshift({
         id: `reveal-${Date.now()}`,
         team: 'System',
-        caption: 'Everyone’s locations are visible for 45 seconds.',
+        caption: 'Everyone’s locations are visible for 30 seconds.',
         image: null,
         createdAt: Date.now()
     });
@@ -943,6 +1018,7 @@ function syncRoomState(snapshot = {}) {
             radius: Number.isFinite(Number(snapshot.zone.radius)) ? Number(snapshot.zone.radius) : DEFAULT_ZONE_RADIUS,
             roundSeconds: Number.isFinite(Number(snapshot.zone.roundSeconds)) ? Number(snapshot.zone.roundSeconds) : DEFAULT_ROUND_SECONDS,
         };
+        state.mapMovedByUser = false;
     }
 
     if (snapshot.gameState) {
@@ -1038,6 +1114,7 @@ function setAdminZoneFromGPS() {
             radius: DEFAULT_ZONE_RADIUS,
             roundSeconds: DEFAULT_ROUND_SECONDS
         };
+        state.mapMovedByUser = false;
 
         if (state.socket && state.roomCode) {
             state.socket.emit('zone:update', {
@@ -1080,6 +1157,7 @@ function setAdminZoneFromGPS() {
             radius: DEFAULT_ZONE_RADIUS,
             roundSeconds: DEFAULT_ROUND_SECONDS
         };
+        state.mapMovedByUser = false;
 
         if (state.socket && state.roomCode) {
             state.socket.emit('zone:update', {
@@ -1143,18 +1221,19 @@ function connectSocket() {
 
     socket.on('connect', function handleConnect() {
         if (state.pendingJoin) {
-            const name = playerNameInput.value.trim() || `Player ${Math.floor(Math.random() * 900 + 100)}`;
-            const roomCode = 'SONIYA';
+            const name = (playerNameInput && playerNameInput.value.trim()) || state.myName || `Player ${Math.floor(Math.random() * 900 + 100)}`;
+            const roomCode = (roomCodeInput && roomCodeInput.value.trim()) || state.roomCode || 'SONIYA';
+            const selectedTeam = (teamSelect && teamSelect.value) || 'Red';
             if (roomCodeInput) {
                 roomCodeInput.value = roomCode;
             }
-            const selectedTeam = teamSelect.value || 'Red';
             state.roomCode = roomCode;
             state.myName = name;
             state.started = false;
             state.totalSeconds = DEFAULT_ROUND_SECONDS;
             state.lastPhotoReminderSeconds = null;
             countdownEl.textContent = formatTime(state.totalSeconds);
+            saveSession();
             socket.emit('join-room', {
                 roomCode,
                 name,
@@ -1209,7 +1288,7 @@ function connectSocket() {
 
 function joinRoom() {
     const name = playerNameInput.value.trim() || `Player ${Math.floor(Math.random() * 900 + 100)}`;
-    const roomCode = 'SONIYA';
+    const roomCode = (roomCodeInput && roomCodeInput.value.trim()) || 'SONIYA';
     if (roomCodeInput) {
         roomCodeInput.value = roomCode;
     }
@@ -1221,6 +1300,7 @@ function joinRoom() {
     state.pingIndex = 0;
     state.myName = name;
     state.roomCode = roomCode;
+    saveSession();
     countdownEl.textContent = formatTime(state.totalSeconds);
 
     if (!state.socket) {
@@ -1273,7 +1353,10 @@ triggerPingButton.addEventListener('click', function onPing() {
 photoButton.addEventListener('click', dropPhotoClue);
 markFoundButton.addEventListener('click', markFoundPlayer);
 joinRoomButton.addEventListener('click', joinRoom);
-teamSelect.addEventListener('change', updateMyTeamAssignment);
+teamSelect.addEventListener('change', function handleTeamChange() {
+    updateMyTeamAssignment();
+    saveSession();
+});
 if (seekerTeamSelect) {
     seekerTeamSelect.addEventListener('change', function handleSeekerTeamChange() {
         if (!state.adminUnlocked) {
@@ -1318,4 +1401,5 @@ countdownEl.textContent = formatTime(state.totalSeconds);
 renderPlayers();
 updateBoundary();
 initMap();
+restoreSession();
 connectSocket();
