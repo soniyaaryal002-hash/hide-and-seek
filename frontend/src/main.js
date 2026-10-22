@@ -30,12 +30,17 @@ const PHOTO_CLUE_REMINDER_SECONDS = [
     45 * 60 - 50 * 60
 ];
 
+const LOCATION_REVEAL_SECONDS = [...PHOTO_CLUE_REMINDER_SECONDS];
+const LOCATION_REVEAL_MS = 45 * 1000;
+
 const state = {
     started: false,
     totalSeconds: DEFAULT_ROUND_SECONDS,
     pingIndex: 0,
     lastBuzz: '�',
     lastPhotoReminderSeconds: null,
+    lastLocationRevealSeconds: null,
+    locationRevealUntil: 0,
     players: [],
     socket: null,
     roomCode: '',
@@ -322,6 +327,63 @@ function updateBoundary() {
     updateZoneDisplay();
 }
 
+function isLocationRevealActive() {
+    return Date.now() < state.locationRevealUntil;
+}
+
+function triggerLocationReveal() {
+    state.locationRevealUntil = Date.now() + LOCATION_REVEAL_MS;
+
+    if (state.zone && state.zone.center && map) {
+        if (state.reminderPulseLayer) {
+            map.removeLayer(state.reminderPulseLayer);
+        }
+
+        state.reminderPulseLayer = L.circle([state.zone.center.lat, state.zone.center.lng], {
+            radius: 40,
+            color: '#2d9bf0',
+            fillColor: '#2d9bf0',
+            fillOpacity: 0.12,
+            weight: 3,
+            dashArray: '6 8'
+        }).addTo(map);
+
+        setTimeout(() => {
+            if (state.reminderPulseLayer && map) {
+                map.removeLayer(state.reminderPulseLayer);
+                state.reminderPulseLayer = null;
+            }
+        }, 4500);
+    }
+
+    state.photoClues.unshift({
+        id: `reveal-${Date.now()}`,
+        team: 'System',
+        caption: 'Everyone’s locations are visible for 45 seconds.',
+        image: null,
+        createdAt: Date.now()
+    });
+    renderFeed();
+}
+
+function checkLocationReveal() {
+    if (!state.started || !Number.isFinite(state.totalSeconds)) {
+        return;
+    }
+
+    const hasReveal = LOCATION_REVEAL_SECONDS.includes(state.totalSeconds);
+    if (!hasReveal) {
+        return;
+    }
+
+    if (state.lastLocationRevealSeconds === state.totalSeconds) {
+        return;
+    }
+
+    state.lastLocationRevealSeconds = state.totalSeconds;
+    triggerLocationReveal();
+}
+
 function renderMapMarkers() {
     if (!map) return;
 
@@ -346,15 +408,17 @@ function renderMapMarkers() {
         state.adminLocationMarker = null;
     }
 
+    const revealMode = isLocationRevealActive();
+
     const playersWithLocations = state.players.filter((player) => player.location);
     playersWithLocations.forEach((player) => {
         const isCurrentUser = Boolean(state.socket && state.socket.id && player.id === state.socket.id);
         const marker = L.circleMarker([player.location.lat, player.location.lng], {
-            radius: isCurrentUser ? 8 : player.role === 'Seeker' ? 9 : 7,
+            radius: revealMode ? (isCurrentUser ? 10 : 9) : (isCurrentUser ? 8 : player.role === 'Seeker' ? 9 : 7),
             color: isCurrentUser ? '#2158d0' : getTeamColor(player.team || 'Red'),
             fillColor: isCurrentUser ? '#6fa8ff' : (player.role === 'Seeker' ? '#ff5a5f' : '#9fe3a6'),
             fillOpacity: 1,
-            weight: 2
+            weight: revealMode ? 3 : 2
         }).addTo(map);
 
         marker.bindPopup(`
@@ -371,11 +435,11 @@ function renderMapMarkers() {
 
     if (state.currentLocation && !isCurrentUserVisible) {
         const selfMarker = L.circleMarker([state.currentLocation.lat, state.currentLocation.lng], {
-            radius: 8,
+            radius: revealMode ? 10 : 8,
             color: '#2158d0',
             fillColor: '#6fa8ff',
             fillOpacity: 1,
-            weight: 3
+            weight: revealMode ? 3 : 2
         }).addTo(map);
         selfMarker.bindPopup('Your GPS location');
         state.mapMarkers.set('self-location', selfMarker);
@@ -657,6 +721,7 @@ function startTimer() {
             state.totalSeconds -= 1;
             countdownEl.textContent = formatTime(state.totalSeconds);
             checkPhotoClueReminder();
+            checkLocationReveal();
             updateBoundary();
         } else {
             state.started = false;
@@ -801,6 +866,8 @@ function endCurrentRound() {
     stopTimer();
     state.started = false;
     state.lastPhotoReminderSeconds = null;
+    state.lastLocationRevealSeconds = null;
+    state.locationRevealUntil = 0;
     state.pingIndex = 0;
     state.photoClues = [];
     state.zone = { center: null, radius: DEFAULT_ZONE_RADIUS, roundSeconds: DEFAULT_ROUND_SECONDS };
@@ -890,6 +957,7 @@ function syncRoomState(snapshot = {}) {
         countdownEl.textContent = formatTime(state.totalSeconds);
         phaseNameEl.textContent = snapshot.gameState.phase || 'Scatter';
         checkPhotoClueReminder();
+        checkLocationReveal();
     } else {
         state.totalSeconds = DEFAULT_ROUND_SECONDS;
         countdownEl.textContent = formatTime(state.totalSeconds);
@@ -1038,6 +1106,8 @@ function resetCurrentRoundZone() {
     state.started = false;
     state.totalSeconds = DEFAULT_ROUND_SECONDS;
     state.lastPhotoReminderSeconds = null;
+    state.lastLocationRevealSeconds = null;
+    state.locationRevealUntil = 0;
     state.pingIndex = 0;
     phaseNameEl.textContent = 'Scatter';
     radiusValueEl.textContent = '600 m';
