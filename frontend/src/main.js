@@ -981,6 +981,10 @@ function watchLocation() {
         return;
     }
 
+    if (state.locationWatchId !== null && state.locationWatchId !== undefined) {
+        return;
+    }
+
     const sendLocation = ({ coords }) => {
         const payload = {
             lat: coords.latitude,
@@ -1314,6 +1318,7 @@ function joinRoom() {
         name: state.myName,
         team: teamSelect.value || 'Red'
     });
+    watchLocation();
 }
 
 startGameButton.addEventListener('click', function onStartGame() {

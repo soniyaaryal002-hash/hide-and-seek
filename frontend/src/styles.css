@@ -238,6 +238,45 @@ h1 {
     font-weight: 700;
 }
 
+.rules-panel {
+    margin-bottom: 20px;
+    padding: 18px 20px 10px;
+}
+
+.rules-details {
+    margin-top: 0.85rem;
+    border: 1px solid rgba(82, 76, 94, 0.12);
+    border-radius: 14px;
+    background: rgba(53, 91, 219, 0.03);
+    overflow: hidden;
+}
+
+.rules-details summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.9rem 1rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.rules-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.rules-content {
+    padding: 0 1rem 1rem;
+    color: var(--text);
+}
+
+.rules-content ol {
+    margin: 0;
+    padding-left: 1.2rem;
+    display: grid;
+    gap: 0.55rem;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
 .stat-card {
     padding: 1rem 1.1rem;
 }
