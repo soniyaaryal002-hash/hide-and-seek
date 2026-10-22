@@ -90,7 +90,7 @@ const adminLockMessageEl = document.getElementById('admin-lock-message');
 const endRoundButton = document.getElementById('end-round');
 
 const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    import.meta.env.VITE_BACKEND_URL || 'https://hide-and-seek-backend-bshf.onrender.com';
 const mapCenter = [DEFAULT_ZONE_CENTER.lat, DEFAULT_ZONE_CENTER.lng];
 let map;
 let boundaryLayer;
