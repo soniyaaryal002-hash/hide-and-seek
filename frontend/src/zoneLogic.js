@@ -26,8 +26,8 @@ export function normalizeZoneCenter(center) {
 export function getZoneRadiusForSeconds(totalSeconds, roundSeconds = DEFAULT_ROUND_SECONDS, minimumRadius = MIN_ZONE_RADIUS) {
     const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
     const safeRoundSeconds = Math.max(1, Number(roundSeconds) || DEFAULT_ROUND_SECONDS);
-    const shrinkEverySeconds = 9 * 60;
-    const stages = [600, 500, 400, 300, 200, 50];
+    const shrinkEverySeconds = 5 * 60;
+    const stages = [600, 500, 400, 300, 200, 100, 80, 60, 50];
 
     if (safeSeconds <= 0) {
         return minimumRadius;
@@ -35,7 +35,7 @@ export function getZoneRadiusForSeconds(totalSeconds, roundSeconds = DEFAULT_ROU
 
     const elapsedSeconds = Math.max(0, safeRoundSeconds - safeSeconds);
     const completedSteps = Math.floor(Math.min(elapsedSeconds, safeRoundSeconds) / shrinkEverySeconds);
-    const radius = stages[Math.min(stages.length - 1, completedSteps)] ?? minimumRadius;
+    const radius = stages[Math.min(stages.length - 1, completedSteps)] ? ? minimumRadius;
 
     return Math.max(minimumRadius, Math.min(DEFAULT_ZONE_RADIUS, radius));
 }

@@ -90,7 +90,6 @@ const seekerPlayerListEl = document.getElementById('seeker-player-list');
 const pingScheduleEl = document.getElementById('ping-schedule');
 const killFeedEl = document.getElementById('kill-feed');
 const startGameButton = document.getElementById('start-game');
-const triggerPingButton = document.getElementById('trigger-ping');
 const photoButton = document.getElementById('drop-photo');
 const markFoundButton = document.getElementById('mark-found');
 const foundPlayerSelect = document.getElementById('found-player-select');
@@ -1478,13 +1477,6 @@ startGameButton.addEventListener('click', function onStartGame() {
 
     startTimer();
     updateBoundary();
-});
-
-triggerPingButton.addEventListener('click', function onPing() {
-    if (state.socket) {
-        state.socket.emit('trigger-ping', { roomCode: state.roomCode });
-    }
-    triggerPing();
 });
 
 photoButton.addEventListener('click', dropPhotoClue);
