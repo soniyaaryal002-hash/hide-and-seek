@@ -421,7 +421,7 @@ io.on('connection', (socket) => {
         broadcastRoom(code);
     });
 
-    socket.on('photo:drop', ({ roomCode, team, image, caption }) => {
+    socket.on('photo:drop', ({ roomCode, team, image, caption, uploaderName }) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
         const room = getRoom(code);
 
@@ -431,6 +431,7 @@ io.on('connection', (socket) => {
         const clueEntry = {
             id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
             team: team || 'Red',
+            uploaderName: uploaderName || socket.data.name || 'Someone',
             caption: caption || 'Photo clue dropped',
             image,
             createdAt: Date.now()

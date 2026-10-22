@@ -71,7 +71,8 @@ const state = {
     reminderPulseLayer: null,
     seekerUnlocked: false,
     adminUnlocked: false,
-    zone: { center: null, radius: DEFAULT_ZONE_RADIUS, roundSeconds: DEFAULT_ROUND_SECONDS }
+    zone: { center: null, radius: DEFAULT_ZONE_RADIUS, roundSeconds: DEFAULT_ROUND_SECONDS },
+    boundaryWarningEl: null
 };
 
 const countdownEl = document.getElementById('countdown');
@@ -275,6 +276,101 @@ function getPlayerGroups() {
             }))
         };
     });
+}
+
+function getDistanceMetersBetweenPoints(from, to) {
+    if (!from || !to) return Number.POSITIVE_INFINITY;
+
+    const toRadians = (value) => (value * Math.PI) / 180;
+    const earthRadiusMeters = 6371000;
+    const latDiff = toRadians(to.lat - from.lat);
+    const lngDiff = toRadians(to.lng - from.lng);
+    const lat1 = toRadians(from.lat);
+    const lat2 = toRadians(to.lat);
+
+    const a = Math.sin(latDiff / 2) * Math.sin(latDiff / 2) +
+        Math.sin(lngDiff / 2) * Math.sin(lngDiff / 2) * Math.cos(lat1) * Math.cos(lat2);
+
+    return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function dismissBoundaryWarning() {
+    if (state.boundaryWarningEl && state.boundaryWarningEl.parentNode) {
+        state.boundaryWarningEl.parentNode.removeChild(state.boundaryWarningEl);
+    }
+    state.boundaryWarningEl = null;
+}
+
+function showBoundaryWarning() {
+    if (!state.zone || !state.zone.center || !state.currentLocation) {
+        dismissBoundaryWarning();
+        return;
+    }
+
+    const distanceMeters = getDistanceMetersBetweenPoints(state.zone.center, state.currentLocation);
+    const radiusMeters = Number(state.zone.radius) || DEFAULT_ZONE_RADIUS;
+
+    if (distanceMeters <= radiusMeters) {
+        dismissBoundaryWarning();
+        return;
+    }
+
+    if (state.boundaryWarningEl) {
+        return;
+    }
+
+    const popup = document.createElement('div');
+    popup.style.position = 'fixed';
+    popup.style.top = '20px';
+    popup.style.left = '50%';
+    popup.style.transform = 'translateX(-50%)';
+    popup.style.zIndex = '4000';
+    popup.style.width = 'min(90vw, 360px)';
+    popup.style.background = '#1f2430';
+    popup.style.color = '#ffffff';
+    popup.style.border = '1px solid rgba(255,255,255,0.12)';
+    popup.style.borderRadius = '12px';
+    popup.style.boxShadow = '0 18px 48px rgba(0, 0, 0, 0.28)';
+    popup.style.padding = '16px 18px';
+    popup.style.fontFamily = 'Inter, sans-serif';
+
+    const title = document.createElement('div');
+    title.textContent = 'Boundary alert';
+    title.style.fontWeight = '700';
+    title.style.fontSize = '16px';
+    title.style.marginBottom = '8px';
+
+    const msg = document.createElement('div');
+    msg.textContent = 'You are outside the safe zone. Head back inside the boundary.';
+    msg.style.fontSize = '14px';
+    msg.style.lineHeight = '1.5';
+    msg.style.marginBottom = '12px';
+    msg.style.color = '#e8edf8';
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.textContent = 'Close';
+    closeButton.style.cssText = 'border: none; border-radius: 8px; background: #fdc66b; color: #1c1c1c; padding: 8px 12px; font-weight: 700; cursor: pointer;';
+    closeButton.addEventListener('click', dismissBoundaryWarning);
+
+    popup.appendChild(title);
+    popup.appendChild(msg);
+    popup.appendChild(closeButton);
+    document.body.appendChild(popup);
+    state.boundaryWarningEl = popup;
+}
+
+function checkBoundaryWarningForCurrentPlayer() {
+    if (!state.zone || !state.zone.center || !state.currentLocation) {
+        dismissBoundaryWarning();
+        return;
+    }
+
+    if (state.started) {
+        showBoundaryWarning();
+    } else {
+        dismissBoundaryWarning();
+    }
 }
 
 function initMap() {
@@ -675,6 +771,8 @@ function renderFeed() {
     const feedEntries = state.photoClues
         .map((clue) => {
             const hasImage = Boolean(clue && clue.image);
+            const uploaderName = clue && clue.uploaderName ? clue.uploaderName : 'Someone';
+            const teamName = clue && clue.team && clue.team !== 'Unassigned' ? ` (${clue.team})` : '';
             let caption = '';
             if (clue && clue.caption) {
                 caption = clue.caption;
@@ -682,7 +780,7 @@ function renderFeed() {
             return {
                 type: hasImage ? 'photo' : 'note',
                 text: hasImage ?
-                    `${clue.team} dropped a photo clue.` : `${clue.team} • ${clue.caption || 'Game update'}`,
+                    `${uploaderName}${teamName} dropped a photo clue.` : `${uploaderName}${teamName} • ${clue.caption || 'Game update'}`,
                 image: hasImage ? clue.image : null,
                 caption: caption
             };
@@ -886,7 +984,8 @@ function dropPhotoClue() {
         const compressedDataUrl = await compressPhotoForRoom(dataUrl, 1_000_000);
         const clue = {
             id: `photo-${Date.now()}`,
-            team: state.seekerTeam || 'Red',
+            team: (teamSelect && teamSelect.value) || state.seekerTeam || 'Red',
+            uploaderName: state.myName || 'Someone',
             caption: 'Photo clue dropped for the team',
             image: compressedDataUrl,
             createdAt: Date.now()
@@ -899,6 +998,7 @@ function dropPhotoClue() {
             state.socket.emit('photo:drop', {
                 roomCode: state.roomCode,
                 team: clue.team,
+                uploaderName: clue.uploaderName,
                 image: clue.image,
                 caption: clue.caption
             });
@@ -1003,6 +1103,7 @@ function watchLocation() {
         };
 
         state.currentLocation = payload;
+        checkBoundaryWarningForCurrentPlayer();
 
         if (map && !state.mapMovedByUser) {
             map.setView([payload.lat, payload.lng], Math.max(map.getZoom(), 15));
@@ -1038,6 +1139,8 @@ function syncRoomState(snapshot = {}) {
         };
         state.mapMovedByUser = false;
     }
+
+    checkBoundaryWarningForCurrentPlayer();
 
     if (snapshot.gameState) {
         if (typeof snapshot.gameState.started === 'boolean') {
