@@ -35,7 +35,7 @@ export function getZoneRadiusForSeconds(totalSeconds, roundSeconds = DEFAULT_ROU
 
     const elapsedSeconds = Math.max(0, safeRoundSeconds - safeSeconds);
     const completedSteps = Math.floor(Math.min(elapsedSeconds, safeRoundSeconds) / shrinkEverySeconds);
-    const radius = stages[Math.min(stages.length - 1, completedSteps)] ? ? minimumRadius;
+    const radius = stages[Math.min(stages.length - 1, completedSteps)] ?? minimumRadius;
 
     return Math.max(minimumRadius, Math.min(DEFAULT_ZONE_RADIUS, radius));
 }

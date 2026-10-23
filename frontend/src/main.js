@@ -680,6 +680,12 @@ function getSelectableHiddenPlayers() {
     });
 }
 
+function updateMarkFoundButtonState() {
+    if (!markFoundButton) return;
+    const hasSelection = Boolean(foundPlayerSelect && foundPlayerSelect.value);
+    markFoundButton.disabled = !hasSelection;
+}
+
 function syncFoundPlayerSelect() {
     if (!foundPlayerSelect) return;
 
@@ -694,6 +700,7 @@ function syncFoundPlayerSelect() {
         option.textContent = 'No hiders left';
         option.disabled = true;
         foundPlayerSelect.appendChild(option);
+        updateMarkFoundButtonState();
         return;
     }
 
@@ -707,6 +714,8 @@ function syncFoundPlayerSelect() {
     if (previousValue && hiddenPlayers.some((player) => player.id === previousValue)) {
         foundPlayerSelect.value = previousValue;
     }
+
+    updateMarkFoundButtonState();
 }
 
 function syncSeekerTeamSelect() {
@@ -1563,6 +1572,10 @@ if (seekerTeamSelect) {
             });
         }
     });
+}
+
+if (foundPlayerSelect) {
+    foundPlayerSelect.addEventListener('change', updateMarkFoundButtonState);
 }
 
 if (unlockAdminButton) {

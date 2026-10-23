@@ -401,9 +401,12 @@ io.on('connection', (socket) => {
     socket.on('player:found', ({ roomCode, playerId }) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
         const room = getRoom(code);
+        const targetId = String(playerId || '').trim();
 
-        const player = room.players.get(playerId) || [...room.players.values()].find((entry) => entry.name === playerId);
-        if (!player) return;
+        if (!targetId) return;
+
+        const player = room.players.get(targetId) || [...room.players.values()].find((entry) => entry.name === targetId);
+        if (!player || player.role === 'Seeker') return;
 
         player.role = 'Seeker';
         room.gameState.seekerTeam = player.team || room.gameState.seekerTeam;
