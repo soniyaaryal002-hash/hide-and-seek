@@ -1,17 +1,26 @@
 :root {
-    --bg-1: #f4f7fb;
-    --bg-2: #edf2ff;
-    --panel: rgba(255, 255, 255, 0.9);
-    --panel-border: rgba(52, 64, 84, 0.12);
-    --text: #1d2433;
-    --muted: #5a6479;
-    --green: #2d8a6d;
-    --green-deep: #1b5d46;
-    --red: #d65042;
-    --amber: #d28b2a;
-    --blue: #355bdb;
-    --purple: #6c63ff;
-    --shadow: 0 18px 36px rgba(31, 43, 62, 0.08);
+    --bg-1: #fff8f3;
+    --bg-2: #f9efe7;
+    --bg-3: #f3d8cf;
+    --panel: rgba(255, 252, 250, 0.9);
+    --panel-border: rgba(131, 90, 77, 0.12);
+    --text: #352b29;
+    --muted: #685c5a;
+    --rose: #e7b5b2;
+    --rose-deep: #c26a67;
+    --peach: #f5d1af;
+    --champagne: #f6e7bf;
+    --berry: #9d5d69;
+    --green: #8ab68d;
+    --green-deep: #456d50;
+    --green-soft: #edf5ea;
+    --green-strong: #5b8d67;
+    --sage: #e7efe0;
+    --red: #d8695c;
+    --amber: #d9a655;
+    --blue: #7d9ca3;
+    --purple: #9a9c8e;
+    --shadow: 0 22px 42px rgba(122, 80, 72, 0.1);
 }
 
 * {
@@ -22,19 +31,40 @@ html,
 body {
     margin: 0;
     min-height: 100%;
-    background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 42%, var(--bg-3) 100%);
     color: var(--text);
     font-family: 'Inter', sans-serif;
+    color-scheme: light;
 }
 
 body {
+    position: relative;
     display: flex;
     justify-content: center;
     padding: 28px 18px 52px;
 }
 
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.75), transparent 30%), radial-gradient(circle at 80% 25%, rgba(245, 209, 175, 0.42), transparent 32%), radial-gradient(circle at 50% 100%, rgba(231, 181, 178, 0.2), transparent 28%), linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle at 8% 10%, rgba(231, 181, 178, 0.8) 0 7px, transparent 8px), radial-gradient(circle at 18% 18%, rgba(246, 231, 191, 0.9) 0 7px, transparent 8px), radial-gradient(circle at 82% 12%, rgba(173, 211, 170, 0.8) 0 7px, transparent 8px), radial-gradient(circle at 90% 18%, rgba(245, 209, 175, 0.9) 0 7px, transparent 8px), radial-gradient(circle at 32% 8%, rgba(196, 146, 157, 0.75) 0 6px, transparent 7px), radial-gradient(circle at 66% 10%, rgba(242, 164, 65, 0.7) 0 6px, transparent 7px), radial-gradient(circle at 50% 4%, rgba(184, 120, 132, 0.45) 0 10px, transparent 11px), radial-gradient(circle at 72% 20%, rgba(232, 166, 157, 0.45) 0 9px, transparent 10px);
+    opacity: 0.8;
+}
+
 .page-shell {
     width: min(1200px, 100%);
+    position: relative;
+    z-index: 1;
 }
 
 .topbar {
@@ -43,6 +73,11 @@ body {
     gap: 18px;
     align-items: flex-end;
     margin-bottom: 20px;
+    padding: 1rem 1.2rem 1rem;
+    border: 1px solid rgba(131, 90, 77, 0.1);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.05));
+    border-bottom: 1px solid rgba(91, 79, 63, 0.1);
 }
 
 .join-controls {
@@ -67,15 +102,16 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(53, 91, 219, 0.08);
-    color: var(--blue);
-    border: 1px solid rgba(53, 91, 219, 0.14);
-    border-radius: 12px;
-    padding: 0.72rem 0.8rem;
-    font-size: 0.8rem;
+    background: linear-gradient(135deg, rgba(231, 181, 178, 0.18), rgba(255, 255, 255, 0.86));
+    color: var(--berry);
+    border: 1px solid rgba(194, 106, 103, 0.2);
+    border-radius: 999px;
+    padding: 0.72rem 0.9rem;
+    font-size: 0.75rem;
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .captain-toggle {
@@ -94,18 +130,19 @@ body {
     margin: 0 0 8px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--berry);
     font-size: 0.68rem;
 }
 
 h1 {
     margin: 0;
-    font-size: clamp(2.3rem, 3vw, 4.2rem);
-    line-height: 0.95;
-    letter-spacing: -0.05em;
+    font-size: clamp(2.5rem, 3vw, 4.5rem);
+    line-height: 0.9;
+    letter-spacing: -0.06em;
     font-family: 'Cormorant Garamond', Georgia, serif;
     font-weight: 700;
-    text-shadow: none;
+    color: #3d2f2a;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .primary-button,
@@ -137,15 +174,16 @@ h1 {
 }
 
 .primary-button {
-    background: linear-gradient(135deg, var(--blue), var(--purple));
-    color: white;
-    box-shadow: 0 12px 18px rgba(53, 91, 219, 0.18);
+    background: linear-gradient(135deg, var(--rose-deep), var(--rose), var(--peach));
+    color: #3c2427;
+    box-shadow: 0 12px 18px rgba(194, 106, 103, 0.2);
 }
 
 .secondary-button {
-    background: rgba(255, 255, 255, 0.68);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 242, 234, 0.9));
     color: var(--text);
-    border: 1px solid rgba(97, 71, 87, 0.12);
+    border: 1px solid rgba(107, 88, 72, 0.12);
+    box-shadow: 0 8px 14px rgba(91, 74, 60, 0.06);
 }
 
 .secondary-button.accent {
@@ -180,9 +218,9 @@ h1 {
 }
 
 .panel {
-    background: var(--panel);
+    background: linear-gradient(180deg, rgba(255, 250, 245, 0.96), rgba(247, 241, 232, 0.92));
     border: 1px solid var(--panel-border);
-    border-radius: 20px;
+    border-radius: 22px;
     box-shadow: var(--shadow);
     backdrop-filter: blur(8px);
 }
@@ -191,7 +229,7 @@ h1 {
     padding: 0.9rem 1rem;
     border: 1px solid rgba(57, 53, 49, 0.08);
     border-radius: 16px;
-    background: rgba(95, 122, 180, 0.04);
+    background: rgba(107, 191, 142, 0.05);
     margin-bottom: 1rem;
 }
 
@@ -247,7 +285,7 @@ h1 {
     margin-top: 0.85rem;
     border: 1px solid rgba(82, 76, 94, 0.12);
     border-radius: 14px;
-    background: rgba(53, 91, 219, 0.03);
+    background: rgba(107, 191, 142, 0.04);
     overflow: hidden;
 }
 
@@ -344,12 +382,13 @@ h1 {
     align-items: center;
     border-radius: 999px;
     padding: 0.38rem 0.72rem;
-    background: rgba(31, 157, 104, 0.1);
-    color: var(--green-deep);
-    border: 1px solid rgba(31, 157, 104, 0.2);
+    background: linear-gradient(135deg, rgba(231, 181, 178, 0.28), rgba(246, 231, 191, 0.35));
+    color: var(--berry);
+    border: 1px solid rgba(157, 93, 105, 0.18);
     font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.04em;
+    box-shadow: 0 6px 12px rgba(157, 93, 105, 0.06);
 }
 
 .badge-live {
@@ -361,8 +400,8 @@ h1 {
 .player-role-panel {
     padding: 0.95rem 1rem;
     border-radius: 16px;
-    background: linear-gradient(180deg, rgba(53, 91, 219, 0.07), rgba(255, 255, 255, 0.85));
-    border: 1px solid rgba(53, 91, 219, 0.18);
+    background: linear-gradient(180deg, rgba(107, 191, 142, 0.10), rgba(255, 255, 255, 0.9));
+    border: 1px solid rgba(79, 156, 106, 0.18);
     margin-bottom: 0.9rem;
 }
 
@@ -430,8 +469,8 @@ h1 {
 .reveal-row {
     padding: 0.7rem 0.8rem;
     border-radius: 12px;
-    border: 1px solid rgba(53, 91, 219, 0.14);
-    background: rgba(53, 91, 219, 0.05);
+    border: 1px solid rgba(77, 153, 104, 0.18);
+    background: rgba(107, 191, 142, 0.06);
 }
 
 .reveal-countdown {
@@ -439,7 +478,7 @@ h1 {
     font-size: 1.3rem;
     font-weight: 800;
     letter-spacing: -0.05em;
-    color: var(--blue);
+    color: var(--green-deep);
 }
 
 .two-col {
@@ -486,7 +525,9 @@ h1 {
 
 .found-button {
     flex-shrink: 0;
-    min-width: 128px;
+    min-width: 140px;
+    font-size: 0.96rem;
+    padding: 0.9rem 1rem;
 }
 
 .status-strip {
@@ -781,6 +822,17 @@ h1 {
     .controls {
         display: grid;
         grid-template-columns: 1fr;
+    }
+    .found-player-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+    .found-button {
+        width: 100%;
+        min-width: 0;
+        font-size: 1rem;
+        padding: 0.95rem 1rem;
     }
     .main-grid,
     .stats-grid {

@@ -31,19 +31,21 @@ const PHOTO_CLUE_REMINDER_SECONDS = [
     45 * 60 - 50 * 60
 ];
 
-const LOCATION_REVEAL_SECONDS = [
-    45 * 60 - 5 * 60,
-    45 * 60 - 10 * 60,
-    45 * 60 - 15 * 60,
-    45 * 60 - 20 * 60,
-    45 * 60 - 25 * 60,
-    45 * 60 - 30 * 60,
-    45 * 60 - 35 * 60,
-    45 * 60 - 40 * 60,
-    45 * 60 - 45 * 60
-];
+const REVEAL_INTERVAL_OPTIONS = [5, 10];
 const LOCATION_REVEAL_MS = 30 * 1000;
 const MAX_FEED_ITEMS = 12;
+
+function getRevealScheduleForInterval(intervalMinutes = 5) {
+    const minutes = REVEAL_INTERVAL_OPTIONS.includes(Number(intervalMinutes)) ? Number(intervalMinutes) : 5;
+    const schedule = [];
+    const intervalSeconds = minutes * 60;
+
+    for (let revealSecond = DEFAULT_ROUND_SECONDS - intervalSeconds; revealSecond > 0; revealSecond -= intervalSeconds) {
+        schedule.push(revealSecond);
+    }
+
+    return schedule;
+}
 
 const state = {
     started: false,
@@ -63,6 +65,7 @@ const state = {
     teams: [],
     photoClues: [],
     seekerTeam: 'Red',
+    revealIntervalMinutes: 5,
     locationWatchId: null,
     currentLocation: null,
     mapMarkers: new Map(),
@@ -103,6 +106,7 @@ const zoneLngInput = document.getElementById('zone-lng');
 const zoneCenterLabelEl = document.getElementById('zone-center-label');
 const setAdminZoneButton = document.getElementById('set-admin-zone');
 const resetZoneButton = document.getElementById('reset-zone');
+const revealIntervalSelect = document.getElementById('reveal-interval-select');
 const adminPasswordInput = document.getElementById('admin-password');
 const unlockAdminButton = document.getElementById('unlock-admin');
 const adminControlsEl = document.getElementById('admin-controls');
@@ -212,10 +216,14 @@ function setAdminAccessState(isUnlocked) {
         seekerTeamSelect.disabled = !isUnlocked;
     }
 
+    if (revealIntervalSelect) {
+        revealIntervalSelect.disabled = !isUnlocked;
+    }
+
     if (adminLockMessageEl) {
         const message = isUnlocked ?
-            'Admin unlocked. GPS, the boundary reset, and the seeker team are now active.' :
-            'Enter the admin password to use GPS, reset the boundary, and choose the seeker team.';
+            'Admin unlocked. GPS, the boundary reset, the reveal interval, and the seeker team are now active.' :
+            'Enter the admin password to use GPS, reset the boundary, choose the reveal interval, and choose the seeker team.';
         adminLockMessageEl.textContent = message;
         adminLockMessageEl.classList.toggle('error', false);
     }
@@ -530,7 +538,7 @@ function updateRevealCountdown() {
         return;
     }
 
-    const revealTimes = [...LOCATION_REVEAL_SECONDS].sort((a, b) => a - b).reverse();
+    const revealTimes = getRevealScheduleForInterval(state.revealIntervalMinutes).sort((a, b) => a - b).reverse();
     const nextRevealAt = revealTimes.find((seconds) => seconds < state.totalSeconds);
 
     if (nextRevealAt === undefined) {
@@ -583,7 +591,8 @@ function checkLocationReveal() {
         return;
     }
 
-    const hasReveal = LOCATION_REVEAL_SECONDS.includes(state.totalSeconds);
+    const revealTimes = getRevealScheduleForInterval(state.revealIntervalMinutes);
+    const hasReveal = revealTimes.includes(state.totalSeconds);
     if (!hasReveal) {
         return;
     }
@@ -723,6 +732,13 @@ function syncSeekerTeamSelect() {
     const nextValue = ['Red', 'Blue', 'Green', 'Yellow'].includes(state.seekerTeam) ? state.seekerTeam : 'Red';
     state.seekerTeam = nextValue;
     seekerTeamSelect.value = nextValue;
+}
+
+function syncRevealIntervalSelect() {
+    if (!revealIntervalSelect) return;
+    const nextValue = REVEAL_INTERVAL_OPTIONS.includes(Number(state.revealIntervalMinutes)) ? String(state.revealIntervalMinutes) : '5';
+    state.revealIntervalMinutes = Number(nextValue);
+    revealIntervalSelect.value = nextValue;
 }
 
 function updateYourRoleCard() {
@@ -1223,7 +1239,12 @@ function syncRoomState(snapshot = {}) {
         if (snapshot.gameState.seekerTeam) {
             state.seekerTeam = snapshot.gameState.seekerTeam;
         }
+        if (REVEAL_INTERVAL_OPTIONS.includes(Number(snapshot.gameState.revealIntervalMinutes))) {
+            state.revealIntervalMinutes = Number(snapshot.gameState.revealIntervalMinutes);
+        }
         syncSeekerTeamSelect();
+        syncRevealIntervalSelect();
+        updateRevealCountdown();
 
         if (typeof snapshot.gameState.timerSeconds === 'number' && snapshot.gameState.timerSeconds >= 0) {
             state.totalSeconds = snapshot.gameState.timerSeconds;
@@ -1598,8 +1619,32 @@ if (resetZoneButton) {
     resetZoneButton.addEventListener('click', resetCurrentRoundZone);
 }
 
+if (revealIntervalSelect) {
+    revealIntervalSelect.addEventListener('change', function handleRevealIntervalChange() {
+        if (!state.adminUnlocked) {
+            revealIntervalSelect.value = String(state.revealIntervalMinutes || 5);
+            unlockAdminZone();
+            return;
+        }
+
+        const nextMinutes = Number(revealIntervalSelect.value);
+        const validMinutes = REVEAL_INTERVAL_OPTIONS.includes(nextMinutes) ? nextMinutes : 5;
+        state.revealIntervalMinutes = validMinutes;
+
+        if (state.socket && state.roomCode) {
+            state.socket.emit('reveal-interval:update', {
+                roomCode: state.roomCode,
+                revealIntervalMinutes: validMinutes
+            });
+        }
+
+        updateRevealCountdown();
+    });
+}
+
 endRoundButton.addEventListener('click', endCurrentRound);
 syncSeekerTeamSelect();
+syncRevealIntervalSelect();
 setAdminAccessState(false);
 renderPlayers();
 renderSchedule();

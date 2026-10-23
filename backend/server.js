@@ -22,6 +22,7 @@ const DEFAULT_ZONE = {
     radius: 600,
     roundSeconds: 45 * 60
 };
+const REVEAL_INTERVAL_OPTIONS = [5, 10];
 
 function normalizeZoneCenter(center) {
     if (!center || center.lat === undefined || center.lng === undefined) {
@@ -91,6 +92,7 @@ function createRoom(roomCode) {
             timerSeconds: 45 * 60,
             phase: 'Scatter',
             seekerTeam: 'Red',
+            revealIntervalMinutes: 5,
             allowedTeams: teamOrder
         }
     };
@@ -243,6 +245,20 @@ io.on('connection', (socket) => {
             reconcileRoomRoles(room);
         }
 
+        broadcastRoom(code);
+    });
+
+    socket.on('reveal-interval:update', ({ roomCode, revealIntervalMinutes }) => {
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
+        const room = getRoom(code);
+        if (!room) return;
+
+        const nextInterval = Number(revealIntervalMinutes);
+        if (!REVEAL_INTERVAL_OPTIONS.includes(nextInterval)) {
+            return;
+        }
+
+        room.gameState.revealIntervalMinutes = nextInterval;
         broadcastRoom(code);
     });
 

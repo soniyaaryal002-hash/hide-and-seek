@@ -17,7 +17,7 @@
     <div class="page-shell">
         <header class="topbar">
             <div>
-                <p class="eyebrow">London game board • 4 teams</p>
+                <p class="eyebrow">25th birthday game board • 4 teams</p>
                 <h1>Soniya's Hide & Seek</h1>
                 <div class="join-controls">
                     <input id="player-name" type="text" placeholder="Your name" maxlength="18" aria-label="Player name" />
@@ -60,6 +60,14 @@
                         <option value="Blue">Blue</option>
                         <option value="Green">Green</option>
                         <option value="Yellow">Yellow</option>
+                    </select>
+                </div>
+
+                <div class="seeker-team-panel">
+                    <label class="tiny-label" for="reveal-interval-select">Reveal interval</label>
+                    <select id="reveal-interval-select" class="seeker-team-select" aria-label="Reveal interval selection">
+                        <option value="5">5 minutes</option>
+                        <option value="10">10 minutes</option>
                     </select>
                 </div>
 
@@ -123,12 +131,12 @@
 
                 <div class="found-player-row">
                     <div class="found-player-field">
-                        <label class="tiny-label" for="found-player-select">Found player</label>
-                        <select id="found-player-select" class="found-player-select" aria-label="Found player">
-                            <option value="">Select found hider</option>
+                        <label class="tiny-label" for="found-player-select">Found hider</label>
+                        <select id="found-player-select" class="found-player-select" aria-label="Found hider">
+                            <option value="">Select hider found</option>
                         </select>
                     </div>
-                    <button id="mark-found" class="secondary-button found-button">Mark found</button>
+                    <button id="mark-found" class="secondary-button found-button">Match found</button>
                 </div>
 
                 <div class="status-strip">
