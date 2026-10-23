@@ -76,6 +76,7 @@ const state = {
 };
 
 const countdownEl = document.getElementById('countdown');
+const nextRevealEl = document.getElementById('next-reveal');
 const hidersLeftEl = document.getElementById('hiders-left');
 const seekersCountEl = document.getElementById('seekers-count');
 const phaseNameEl = document.getElementById('phase-name');
@@ -513,8 +514,37 @@ function isLocationRevealActive() {
     return Date.now() < state.locationRevealUntil;
 }
 
+function updateRevealCountdown() {
+    if (!nextRevealEl) {
+        return;
+    }
+
+    if (!state.started) {
+        nextRevealEl.textContent = '—';
+        return;
+    }
+
+    if (isLocationRevealActive()) {
+        const remainingSeconds = Math.max(0, Math.ceil((state.locationRevealUntil - Date.now()) / 1000));
+        nextRevealEl.textContent = `Reveal live • ${formatTime(remainingSeconds)}`;
+        return;
+    }
+
+    const revealTimes = [...LOCATION_REVEAL_SECONDS].sort((a, b) => a - b).reverse();
+    const nextRevealAt = revealTimes.find((seconds) => seconds < state.totalSeconds);
+
+    if (nextRevealAt === undefined) {
+        nextRevealEl.textContent = '—';
+        return;
+    }
+
+    const secondsUntilReveal = Math.max(0, state.totalSeconds - nextRevealAt);
+    nextRevealEl.textContent = `Next reveal • ${formatTime(secondsUntilReveal)}`;
+}
+
 function triggerLocationReveal() {
     state.locationRevealUntil = Date.now() + LOCATION_REVEAL_MS;
+    updateRevealCountdown();
 
     if (state.zone && state.zone.center && map) {
         if (state.reminderPulseLayer) {
@@ -590,17 +620,23 @@ function renderMapMarkers() {
         state.adminLocationMarker = null;
     }
 
-    const revealMode = isLocationRevealActive();
+    const revealMode = state.started && isLocationRevealActive();
     const currentPlayer = state.players.find((player) => state.socket && state.socket.id && player.id === state.socket.id);
     const myTeam = currentPlayer && currentPlayer.team ? normalizeTeamName(currentPlayer.team) : null;
-    const visiblePlayers = revealMode ?
-        state.players.filter((player) => player.location) :
-        state.players.filter((player) => {
+
+    let visiblePlayers = [];
+    if (!state.started) {
+        visiblePlayers = state.players.filter((player) => player.location);
+    } else if (revealMode) {
+        visiblePlayers = state.players.filter((player) => player.location);
+    } else {
+        visiblePlayers = state.players.filter((player) => {
             if (!player || !player.location) return false;
             if (!currentPlayer) return false;
             if (player.id === currentPlayer.id) return true;
             return normalizeTeamName(player.team) === myTeam;
         });
+    }
 
     visiblePlayers.forEach((player) => {
         const isCurrentUser = Boolean(state.socket && state.socket.id && player.id === state.socket.id);
@@ -884,8 +920,7 @@ function triggerPing() {
         circle.style.opacity = '1';
     });
 
-    const headline = phase ? `Game alert: ${phase.label}` : 'Game alert';
-    const pingEntry = headline;
+    const pingEntry = phase ? `Phase updated: ${phase.label}` : 'Phase updated';
     state.photoClues.unshift({
         id: `ping-${Date.now()}`,
         team: 'Game',
@@ -922,12 +957,14 @@ function startTimer() {
             countdownEl.textContent = formatTime(state.totalSeconds);
             checkPhotoClueReminder();
             checkLocationReveal();
+            updateRevealCountdown();
             updateBoundary();
         } else {
             state.started = false;
             stopTimer();
             phaseNameEl.textContent = 'Finished';
             radiusValueEl.textContent = '50 m';
+            updateRevealCountdown();
         }
     }, 1000);
 }
@@ -1019,6 +1056,18 @@ function markFoundPlayer() {
     const selectedPlayerId = foundPlayerSelect ? foundPlayerSelect.value : '';
     const available = getSelectableHiddenPlayers();
 
+    if (!selectedPlayerId) {
+        state.photoClues.unshift({
+            id: `found-${Date.now()}`,
+            team: 'Game',
+            caption: 'Select a hider from the list before marking them found.',
+            image: null,
+            createdAt: Date.now()
+        });
+        renderFeed();
+        return;
+    }
+
     if (!available.length) {
         state.photoClues.unshift({
             id: `found-${Date.now()}`,
@@ -1031,11 +1080,18 @@ function markFoundPlayer() {
         return;
     }
 
-    const target = selectedPlayerId ?
-        available.find((player) => player.id === selectedPlayerId) || available[0] :
-        available[0];
-
-    if (!target) return;
+    const target = available.find((player) => player.id === selectedPlayerId);
+    if (!target) {
+        state.photoClues.unshift({
+            id: `found-${Date.now()}`,
+            team: 'Game',
+            caption: 'That hider is no longer available to mark as found.',
+            image: null,
+            createdAt: Date.now()
+        });
+        renderFeed();
+        return;
+    }
 
     target.role = 'Seeker';
     state.seekerTeam = target.team || state.seekerTeam;
@@ -1136,6 +1192,8 @@ function syncRoomState(snapshot = {}) {
     if (typeof snapshot.started === 'boolean') {
         state.started = snapshot.started;
     }
+
+    updateRevealCountdown();
 
     if (snapshot.zone) {
         state.zone = {

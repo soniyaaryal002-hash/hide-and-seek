@@ -427,6 +427,21 @@ h1 {
     line-height: 1;
 }
 
+.reveal-row {
+    padding: 0.7rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid rgba(53, 91, 219, 0.14);
+    background: rgba(53, 91, 219, 0.05);
+}
+
+.reveal-countdown {
+    margin-top: 0.25rem;
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    color: var(--blue);
+}
+
 .two-col {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
