@@ -415,6 +415,12 @@ function initMap() {
         state.mapMovedByUser = true;
     });
 
+    map.on('moveend', () => {
+        if (state.currentLocation && Math.abs(map.getCenter().lat - state.currentLocation.lat) < 0.0006 && Math.abs(map.getCenter().lng - state.currentLocation.lng) < 0.0006) {
+            state.mapMovedByUser = false;
+        }
+    });
+
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors',
@@ -1024,27 +1030,9 @@ function startTimer() {
     state.started = true;
     countdownEl.textContent = formatTime(state.totalSeconds);
     updateBoundary();
-
-    state.timerId = setInterval(() => {
-        if (!state.started) {
-            return;
-        }
-
-        if (state.totalSeconds > 0) {
-            state.totalSeconds -= 1;
-            countdownEl.textContent = formatTime(state.totalSeconds);
-            checkPhotoClueReminder();
-            checkLocationReveal();
-            updateRevealCountdown();
-            updateBoundary();
-        } else {
-            state.started = false;
-            stopTimer();
-            phaseNameEl.textContent = 'Finished';
-            radiusValueEl.textContent = '50 m';
-            updateRevealCountdown();
-        }
-    }, 1000);
+    checkPhotoClueReminder();
+    checkLocationReveal();
+    updateRevealCountdown();
 }
 
 function fileToDataUrl(file) {
