@@ -71,6 +71,22 @@
                     </select>
                 </div>
 
+                <div class="seeker-team-panel">
+                    <label class="tiny-label" for="admin-player-select">Manual role update</label>
+                    <div class="field-row">
+                        <select id="admin-player-select" class="seeker-team-select" aria-label="Player to override">
+                            <option value="">Select player</option>
+                        </select>
+                        <select id="admin-role-select" class="seeker-team-select" aria-label="Role override selection">
+                            <option value="Hider">Hider</option>
+                            <option value="Seeker">Seeker</option>
+                        </select>
+                    </div>
+                    <div class="button-row" style="margin-top: 0.75rem;">
+                        <button id="apply-player-role" class="secondary-button">Apply role</button>
+                    </div>
+                </div>
+
                 <div class="admin-grid">
                     <div class="field-row">
                         <input id="zone-lat" type="number" step="0.000001" placeholder="Latitude" aria-label="Zone latitude" />

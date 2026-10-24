@@ -233,6 +233,28 @@ io.on('connection', (socket) => {
         broadcastRoom(code);
     });
 
+    socket.on('player:role:update', ({ roomCode, playerId, role }) => {
+        const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
+        const room = getRoom(code);
+        const targetId = String(playerId || '').trim();
+
+        let player = room.players.get(targetId);
+        if (!player) {
+            player = [...room.players.values()].find((entry) => entry.name.toLowerCase() === targetId.toLowerCase());
+        }
+
+        if (!player) return;
+
+        const nextRole = role === 'Seeker' ? 'Seeker' : 'Hider';
+        player.role = nextRole;
+
+        if (room.started && nextRole === 'Seeker') {
+            room.gameState.seekerTeam = player.team || room.gameState.seekerTeam;
+        }
+
+        broadcastRoom(code);
+    });
+
     socket.on('seeker-team:update', ({ roomCode, seekerTeam }) => {
         const code = String(roomCode || socket.data.roomCode || 'SONIYA').trim().toUpperCase();
         const room = getRoom(code);

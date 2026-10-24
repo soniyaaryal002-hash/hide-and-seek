@@ -107,6 +107,9 @@ const zoneCenterLabelEl = document.getElementById('zone-center-label');
 const setAdminZoneButton = document.getElementById('set-admin-zone');
 const resetZoneButton = document.getElementById('reset-zone');
 const revealIntervalSelect = document.getElementById('reveal-interval-select');
+const adminPlayerSelect = document.getElementById('admin-player-select');
+const adminRoleSelect = document.getElementById('admin-role-select');
+const applyPlayerRoleButton = document.getElementById('apply-player-role');
 const adminPasswordInput = document.getElementById('admin-password');
 const unlockAdminButton = document.getElementById('unlock-admin');
 const adminControlsEl = document.getElementById('admin-controls');
@@ -218,6 +221,18 @@ function setAdminAccessState(isUnlocked) {
 
     if (revealIntervalSelect) {
         revealIntervalSelect.disabled = !isUnlocked;
+    }
+
+    if (adminPlayerSelect) {
+        adminPlayerSelect.disabled = !isUnlocked;
+    }
+
+    if (adminRoleSelect) {
+        adminRoleSelect.disabled = !isUnlocked;
+    }
+
+    if (applyPlayerRoleButton) {
+        applyPlayerRoleButton.disabled = !isUnlocked;
     }
 
     if (adminLockMessageEl) {
@@ -643,6 +658,15 @@ function renderMapMarkers() {
             if (!player || !player.location) return false;
             if (!currentPlayer) return false;
             if (player.id === currentPlayer.id) return true;
+
+            if (currentPlayer.role === 'Seeker') {
+                return player.role === 'Seeker';
+            }
+
+            if (player.role === 'Seeker') {
+                return false;
+            }
+
             return normalizeTeamName(player.team) === myTeam;
         });
     }
@@ -739,6 +763,35 @@ function syncRevealIntervalSelect() {
     const nextValue = REVEAL_INTERVAL_OPTIONS.includes(Number(state.revealIntervalMinutes)) ? String(state.revealIntervalMinutes) : '5';
     state.revealIntervalMinutes = Number(nextValue);
     revealIntervalSelect.value = nextValue;
+}
+
+function syncAdminPlayerSelect() {
+    if (!adminPlayerSelect) return;
+
+    const previousValue = adminPlayerSelect.value;
+    const players = (state.players || []).filter((player) => player && player.name);
+
+    adminPlayerSelect.innerHTML = '<option value="">Select player</option>';
+
+    if (!players.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No players yet';
+        option.disabled = true;
+        adminPlayerSelect.appendChild(option);
+        return;
+    }
+
+    players.forEach((player) => {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = `${player.name} (${player.role || 'Hider'})`;
+        adminPlayerSelect.appendChild(option);
+    });
+
+    if (previousValue && players.some((player) => player.id === previousValue)) {
+        adminPlayerSelect.value = previousValue;
+    }
 }
 
 function updateYourRoleCard() {
@@ -1275,6 +1328,7 @@ function syncRoomState(snapshot = {}) {
 
     updateBoundary();
     syncFoundPlayerSelect();
+    syncAdminPlayerSelect();
     renderPlayers();
     renderMapMarkers();
     renderFeed();
@@ -1597,6 +1651,36 @@ if (seekerTeamSelect) {
 
 if (foundPlayerSelect) {
     foundPlayerSelect.addEventListener('change', updateMarkFoundButtonState);
+}
+
+if (applyPlayerRoleButton) {
+    applyPlayerRoleButton.addEventListener('click', function applyPlayerRole() {
+        if (!state.adminUnlocked) {
+            unlockAdminZone();
+            return;
+        }
+
+        if (!state.socket || !state.roomCode) {
+            return;
+        }
+
+        if (!adminPlayerSelect || !adminRoleSelect) {
+            return;
+        }
+
+        const selectedPlayerId = adminPlayerSelect.value;
+        const selectedRole = adminRoleSelect.value;
+
+        if (!selectedPlayerId || !selectedRole) {
+            return;
+        }
+
+        state.socket.emit('player:role:update', {
+            roomCode: state.roomCode,
+            playerId: selectedPlayerId,
+            role: selectedRole
+        });
+    });
 }
 
 if (unlockAdminButton) {
